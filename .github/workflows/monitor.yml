@@ -29,14 +29,26 @@ jobs:
         source .venv/bin/activate
         uv pip install -r requirements.lock
     
+    - name: Check Secrets Availability
+      run: |
+        echo "Checking if secrets are available (will show true/false):"
+        echo "GEMINI_API_KEY set: ${{ secrets.GEMINI_API_KEY != '' }}"
+        echo "EMAIL_USERNAME set: ${{ secrets.EMAIL_USERNAME != '' }}"
+        echo "EMAIL_PASSWORD set: ${{ secrets.EMAIL_PASSWORD != '' }}"
+        echo "EMAIL_TO set: ${{ secrets.EMAIL_TO != '' }}"
+        echo "SMTP_SERVER set: ${{ secrets.SMTP_SERVER != '' }}"
+        echo "CUSTOM_AI_PROMPT set: ${{ secrets.CUSTOM_AI_PROMPT != '' }}"
+
     - name: Run Production Pipeline
+      if: ${{ secrets.GEMINI_API_KEY != '' }}
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
+        EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+        EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+        SMTP_PORT: "587"
+        CUSTOM_AI_PROMPT: ${{ secrets.CUSTOM_AI_PROMPT }}
       run: |
         source .venv/bin/activate
-        export GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
-        export EMAIL_USERNAME="${{ secrets.EMAIL_USERNAME }}"
-        export EMAIL_PASSWORD="${{ secrets.EMAIL_PASSWORD }}"
-        export EMAIL_TO="${{ secrets.EMAIL_TO }}"
-        export SMTP_SERVER="${{ secrets.SMTP_SERVER }}"
-        export SMTP_PORT=587
-        export CUSTOM_AI_PROMPT="${{ secrets.CUSTOM_AI_PROMPT }}"
         python -c "from production_pipeline import production_monitoring_pipeline; import sys; success = production_monitoring_pipeline(); sys.exit(0 if success else 1)"
