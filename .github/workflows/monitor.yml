@@ -21,7 +21,7 @@ jobs:
       run: uv python install 3.12
     
     - name: Install dependencies
-      run: uv sync --all-extras --dev
+      run: uv pip install -r requirements.txt
     
     - name: Run Production Pipeline
       run: uv run python -c "
