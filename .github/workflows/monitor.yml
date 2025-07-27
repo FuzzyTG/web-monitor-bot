@@ -15,13 +15,13 @@ jobs:
     - name: Install UV Package Manager
       uses: astral-sh/setup-uv@v3
       with:
-        enable-cache: true
+        cache-key: requirements.lock
     
     - name: Set up Python
       run: uv python install 3.12
     
     - name: Install dependencies
-      run: uv pip install -r requirements.txt
+      run: uv pip install -r requirements.lock
     
     - name: Run Production Pipeline
       run: uv run python -c "
