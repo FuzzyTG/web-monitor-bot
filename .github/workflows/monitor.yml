@@ -32,12 +32,7 @@ jobs:
     - name: Run Production Pipeline
       run: |
         source .venv/bin/activate
-        python -c "
-          from production_pipeline import production_monitoring_pipeline
-          import sys
-          success = production_monitoring_pipeline()
-          sys.exit(0 if success else 1)
-          "
+        python -c "from production_pipeline import production_monitoring_pipeline; import sys; success = production_monitoring_pipeline(); sys.exit(0 if success else 1)"
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
