@@ -1,0 +1,40 @@
+name: Microsoft Edge Competitive Intelligence
+
+on:
+  schedule:
+    # Runs every 24 hours at 9 AM UTC (optimal for blog monitoring)
+    - cron: '0 9 * * *'
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  competitive-intelligence:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install UV Package Manager
+      uses: astral-sh/setup-uv@v3
+      with:
+        enable-cache: true
+    
+    - name: Set up Python
+      run: uv python install 3.12
+    
+    - name: Install dependencies
+      run: uv sync --all-extras --dev
+    
+    - name: Run Production Pipeline
+      run: uv run python -c "
+        from production_pipeline import production_monitoring_pipeline
+        import sys
+        success = production_monitoring_pipeline()
+        sys.exit(0 if success else 1)
+        "
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
+        EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+        EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+        SMTP_PORT: ${{ secrets.SMTP_PORT }}
+        CUSTOM_AI_PROMPT: ${{ secrets.CUSTOM_AI_PROMPT }}
