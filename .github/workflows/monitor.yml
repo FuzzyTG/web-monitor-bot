@@ -9,6 +9,7 @@ on:
 jobs:
   competitive-intelligence:
     runs-on: ubuntu-latest
+    environment: web-monitor-bot
     
     # CHANGE 1: The 'env' block is moved to the job level.
     # This makes all variables (from secrets and plaintext) available to all steps.
