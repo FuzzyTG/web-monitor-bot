@@ -1,0 +1,51 @@
+name: Verify Shell State Persistence
+
+on:
+  workflow_dispatch: # Allows you to run this workflow manually from the Actions tab
+
+jobs:
+  verification-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Step 1: Set state in an isolated shell"
+        id: step1
+        run: |
+          echo "--- INSIDE STEP 1 ---"
+          # 1. Export a variable to the local shell environment
+          export MY_LOCAL_VARIABLE="hello from step 1"
+          echo "MY_LOCAL_VARIABLE is set to: '$MY_LOCAL_VARIABLE'"
+
+          # 2. Persist a variable using the official GITHUB_ENV file
+          echo "MY_GLOBAL_VARIABLE=persists_across_steps" >> $GITHUB_ENV
+          echo "Wrote MY_GLOBAL_VARIABLE to GITHUB_ENV file."
+
+          # 3. Create a directory and change into it
+          mkdir test-directory
+          cd test-directory
+          echo "Current directory is now: $(pwd)"
+          echo "-----------------------"
+
+      - name: "Step 2: Check state in a new shell"
+        id: step2
+        run: |
+          echo "--- INSIDE STEP 2 ---"
+          # 1. Check the locally exported variable from Step 1
+          echo "MY_LOCAL_VARIABLE is set to: '$MY_LOCAL_VARIABLE'"
+          # EXPECTED: This will be empty, as the 'export' was lost.
+
+          # 2. Check the variable set via GITHUB_ENV
+          echo "MY_GLOBAL_VARIABLE is set to: '$MY_GLOBAL_VARIABLE'"
+          # EXPECTED: This will have the value, as GITHUB_ENV persists.
+
+          # 3. Check the current directory
+          echo "Current directory is: $(pwd)"
+          # EXPECTED: This will be the default workspace, not 'test-directory'.
+          
+          # 4. Check if the directory created in Step 1 exists
+          echo "Checking if 'test-directory' exists..."
+          if [ -d "test-directory" ]; then
+            echo "RESULT: 'test-directory' exists. Filesystem changes persist."
+          else
+            echo "RESULT: 'test-directory' does not exist."
+          fi
+          echo "-----------------------"
