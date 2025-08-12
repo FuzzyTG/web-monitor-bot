@@ -1,65 +1,49 @@
-name: Verify Access to Preconfigured Resources
+name: Multi-Environment Workflow Example
 
 on:
-  workflow_dispatch: # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
 jobs:
-  resource-validation-job:
+  # Job 1: This job is configured to run in your 'Verification' environment
+  run-verification-task:
     runs-on: ubuntu-latest
+    
+    # This line explicitly tells the job to use the 'Verification' environment.
+    # It will now have access to the 1 secret you configured there.
+    environment: Verification
+    
     steps:
-      - name: "Step 1: Read Custom Secrets and Variables"
+      - name: Execute verification step
         run: |
-          echo "--- Verifying access to user-configured resources ---"
+          echo "This job is running in the 👉 ${{ github.environment }} 👈 environment."
+          echo "Attempting to use the secret from this environment..."
           
-          echo "Attempting to read MY_TEST_SECRET..."
-          if [ -n "${{ secrets.MY_TEST_SECRET }}" ]; then
-            echo "✅ SUCCESS: Secret 'MY_TEST_SECRET' was accessed. Value is redacted by GitHub."
+          # Replace 'YOUR_VERIFICATION_SECRET_NAME' with the actual name of your secret.
+          if [ -n "${{ secrets.YOUR_VERIFICATION_SECRET_NAME }}" ]; then
+            echo "✅ SUCCESS: Secret from 'Verification' environment was loaded."
           else
-            echo "❌ FAILURE: Secret 'MY_TEST_SECRET' could not be read. Ensure it is configured in repository settings."
+            echo "❌ FAILURE: Could not load the secret from the 'Verification' environment."
             exit 1
           fi
 
-          echo
-          echo "Attempting to read MY_TEST_VARIABLE..."
-          # Note: It is safe to print repository variables. They are not redacted.
-          if [ -n "${{ vars.MY_TEST_VARIABLE }}" ]; then
-            echo "✅ SUCCESS: Variable 'MY_TEST_VARIABLE' has the value: '${{ vars.MY_TEST_VARIABLE }}'"
+  # Job 2: This job is configured to run in your 'web-monitor-bot' environment
+  run-monitor-bot:
+    runs-on: ubuntu-latest
+    
+    # This line explicitly tells the job to use the 'web-monitor-bot' environment.
+    # It will now have access to the 5 secrets you configured there.
+    environment: web-monitor-bot
+    
+    steps:
+      - name: Execute web monitor task
+        run: |
+          echo "This job is running in the 👉 ${{ github.environment }} 👈 environment."
+          echo "Attempting to use a secret from the bot's environment..."
+          
+          # Replace 'YOUR_BOT_SECRET_NAME' with one of the actual names of your 5 secrets.
+          if [ -n "${{ secrets.YOUR_BOT_SECRET_NAME }}" ]; then
+            echo "✅ SUCCESS: Secret from 'web-monitor-bot' environment was loaded."
           else
-            echo "❌ FAILURE: Variable 'MY_TEST_VARIABLE' could not be read. Ensure it is configured."
+            echo "❌ FAILURE: Could not load the secret from the 'web-monitor-bot' environment."
             exit 1
           fi
-          echo "-----------------------------------------------------"
-
-      - name: "Step 2: Read Default GitHub Environment Variables"
-        run: |
-          echo "--- Verifying access to default GitHub variables ---"
-          echo "Repository: $GITHUB_REPOSITORY"
-          echo "Commit SHA: $GITHUB_SHA"
-          echo "Workflow Triggered By: $GITHUB_ACTOR"
-          echo "Runner OS: $RUNNER_OS"
-          echo "GitHub Run ID: $GITHUB_RUN_ID"
-          echo "--------------------------------------------------"
-
-      - name: "Step 3: Verify Pre-installed Software Tools"
-        run: |
-          echo "--- Verifying availability of common pre-installed tools ---"
-          echo "Checking Git version..."
-          git --version
-          echo
-          echo "Checking Python version..."
-          python3 --version
-          echo
-          echo "Checking Node.js version..."
-          node --version
-          echo
-          echo "Checking cURL version..."
-          curl --version
-          echo "----------------------------------------------------------"
-
-      - name: "Step 4: Verify Access to Repository Code (after checkout)"
-        uses: actions/checkout@v4
-      - run: |
-          echo "--- Verifying access to checked-out repository files ---"
-          echo "Listing files and directories in the workspace root:"
-          ls -la
-          echo "--------------------------------------------------------"
