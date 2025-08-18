@@ -2,56 +2,142 @@ name: Microsoft Edge Competitive Intelligence
 
 on:
   schedule:
-    # Runs every 24 hours at 9 AM UTC (optimal for blog monitoring)
+    # Run daily at 9 AM UTC (adjust timezone as needed)
     - cron: '0 9 * * *'
-  workflow_dispatch: # Allows manual triggering
+  workflow_dispatch:
+    # Allow manual triggering with options
+    inputs:
+      notification_type:
+        description: 'Type of notification to send'
+        required: false
+        default: 'new_posts'
+        type: choice
+        options:
+          - new_posts
+          - test
+      force_analysis:
+        description: 'Force analysis of all posts (not just new ones)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "intelligence-monitoring"
+  cancel-in-progress: false
 
 jobs:
-  competitive-intelligence:
+  monitor-and-publish:
     runs-on: ubuntu-latest
     environment: web-monitor-bot
     
-    # CHANGE 1: The 'env' block is moved to the job level.
-    # This makes all variables (from secrets and plaintext) available to all steps.
-    # This is cleaner and avoids repetition.
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-2.5-pro' }}
       EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
       EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
       EMAIL_TO: ${{ secrets.EMAIL_TO }}
       SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
       SMTP_PORT: "587"
       CUSTOM_AI_PROMPT: ${{ secrets.CUSTOM_AI_PROMPT }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_REPO: ${{ github.repository }}
+      REPORTS_BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+      MAX_REPORTS_TO_KEEP: ${{ secrets.MAX_REPORTS_TO_KEEP || '30' }}
+      REPORTS_CLEANUP_DAYS: ${{ secrets.REPORTS_CLEANUP_DAYS || '30' }}
+      NOTIFICATION_TYPE: ${{ github.event.inputs.notification_type || 'new_posts' }}
+      FORCE_ANALYSIS: ${{ github.event.inputs.force_analysis || 'false' }}
 
     steps:
-      # Step 1: Checkout repository code
-      - name: Checkout repository code
+      - name: Checkout repository
         uses: actions/checkout@v4
-
-      # Step 2: Set up the UV tool
-      # CHANGE 2: Updated to the stable v1 release and modern caching.
-      - name: Set up UV
-        uses: astral-sh/setup-uv@v1
         with:
-          cache-key: ${{ runner.os }}-uv-${{ hashFiles('**/requirements.lock') }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
-      # Step 3: Install Python and dependencies
-      # CHANGE 3: Combined into a single step to ensure the virtual environment
-      # is correctly activated for the dependency installation command.
-      - name: Install Python and dependencies
-        run: |
-          uv python install 3.12
-          uv venv
-          source .venv/bin/activate
-          echo "VENV activated. Installing dependencies..."
-          uv pip install -r requirements.lock
-          echo "Dependencies installed."
+      - name: Set up UV
+        uses: astral-sh/setup-uv@v2
+        with:
+          version: "latest"
 
-      # Step 4: Run the production pipeline
-      # CHANGE 4: This step now correctly sources the venv before running the Python code.
-      # It automatically inherits all environment variables from the job-level 'env' block.
-      - name: Run Production Pipeline
+      - name: Configure Git
         run: |
-          source .venv/bin/activate
-          echo "VENV activated. Running production script..."
-          python -c "from production_pipeline import production_monitoring_pipeline; import sys; success = production_monitoring_pipeline(); sys.exit(0 if success else 1)"
+          git config --global user.name "Competitive Intelligence Bot"
+          git config --global user.email "ci-bot@microsoft.com"
+
+      - name: Install dependencies and run monitoring
+        run: |
+          echo "🚀 Starting Microsoft Edge Competitive Intelligence Monitoring"
+          echo "Repository: $GITHUB_REPO"
+          echo "Reports URL: $REPORTS_BASE_URL"
+          echo "AI Model: $GEMINI_MODEL"
+          echo "Notification Type: $NOTIFICATION_TYPE"
+          echo "Force Analysis: $FORCE_ANALYSIS"
+          echo "Max Reports: $MAX_REPORTS_TO_KEEP"
+          
+          # Install dependencies
+          uv sync
+          
+          # Run the monitoring pipeline
+          if [ "$FORCE_ANALYSIS" = "true" ]; then
+            echo "🔄 Running with force analysis (all posts)"
+            uv run python production_pipeline.py --force
+          else
+            echo "🔍 Running normal monitoring (new posts only)"
+            uv run python production_pipeline.py
+          fi
+
+      - name: Setup Pages
+        if: always()
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        if: always()
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './reports'
+
+      - name: Deploy to GitHub Pages
+        if: always()
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Cleanup old reports
+        if: always()
+        run: |
+          echo "🧹 Cleaning up reports older than 30 days"
+          uv run python -c "
+          try:
+              from report_publisher import cleanup_old_reports
+              success, count, error = cleanup_old_reports(30)
+              if success:
+                  print(f'✅ Cleaned up {count} old reports')
+              else:
+                  print(f'⚠️ Cleanup failed: {error}')
+          except Exception as e:
+              print(f'⚠️ Cleanup skipped: {e}')
+          "
+
+      - name: Create monitoring summary
+        if: always()
+        run: |
+          echo "📊 MONITORING SUMMARY" >> $GITHUB_STEP_SUMMARY
+          echo "===================" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Repository:** ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run Time:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Reports Site:** https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ **Status:** Monitoring completed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Status:** Monitoring failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔍 Check the logs above for detailed monitoring results." >> $GITHUB_STEP_SUMMARY
