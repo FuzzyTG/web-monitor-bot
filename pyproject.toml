@@ -46,6 +46,9 @@ Issues = "https://github.com/alexyuan_microsoft/web-monitor-bot/issues"
 [project.scripts]
 competitive-intel = "production_pipeline:main"
 
+[tool.hatch.build.targets.wheel]
+packages = ["monitor.py", "production_pipeline.py"]
+
 [tool.uv]
 dev-dependencies = []
 

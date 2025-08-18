@@ -50,7 +50,21 @@ Thumbs.db
 previous_posts.json
 blog_posts_*.json
 
+# Runtime directories
+cache/
+logs/
+fallback_emails/
+
 # Test outputs and results
 test_*.html
 test_*.json
+test_*.py
 test_results/
+
+# Runtime data files
+previous_blog_posts.json
+error_handling.py
+verify_updated_prompt.py
+
+# Generated reports (optional - can be committed selectively)
+reports/*.html
