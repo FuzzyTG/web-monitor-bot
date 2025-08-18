@@ -480,7 +480,13 @@ def main():
     print("7. Exit")
     
     try:
-        choice = input("\nEnter your choice (1-7): ").strip()
+        # Check if running in non-interactive environment (GitHub Actions)
+        import sys
+        if not sys.stdin.isatty():
+            print("🤖 Non-interactive environment detected - running default production monitoring")
+            choice = "1"  # Default to production monitoring
+        else:
+            choice = input("\nEnter your choice (1-7): ").strip()
         
         if choice == "1":
             print(f"\n🚀 Starting Production Monitoring...")

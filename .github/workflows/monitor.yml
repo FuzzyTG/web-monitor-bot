@@ -83,13 +83,13 @@ jobs:
           # Install dependencies
           uv sync
           
-          # Run the monitoring pipeline
+          # Run the monitoring pipeline with explicit CLI arguments
           if [ "$FORCE_ANALYSIS" = "true" ]; then
             echo "🔄 Running with force analysis (all posts)"
-            uv run python production_pipeline.py --force
+            uv run python production_pipeline.py --force --notification-type "$NOTIFICATION_TYPE"
           else
             echo "🔍 Running normal monitoring (new posts only)"
-            uv run python production_pipeline.py
+            uv run python production_pipeline.py --notification-type "$NOTIFICATION_TYPE"
           fi
 
       - name: Setup Pages
