@@ -1028,15 +1028,61 @@ def analyze_blog_post_with_ai(blog_post, custom_prompt=None):
         )
         response = model.generate_content(formatted_prompt, generation_config=generation_config)
         
-        if not response or not response.text:
-            error_msg = "Gemini API returned empty response"
+        # Debug: Log response structure for troubleshooting
+        print(f"📊 Response debug info:")
+        if response:
+            print(f"   Response object exists: True")
+            print(f"   Candidates count: {len(response.candidates) if response.candidates else 0}")
+            if response.candidates:
+                candidate = response.candidates[0]
+                print(f"   Finish reason: {candidate.finish_reason}")
+                print(f"   Content exists: {candidate.content is not None}")
+                if candidate.content and candidate.content.parts:
+                    print(f"   Parts count: {len(candidate.content.parts)}")
+                    print(f"   First part type: {type(candidate.content.parts[0]) if candidate.content.parts else 'None'}")
+        else:
+            print(f"   Response object exists: False")
+        
+        # Try multiple methods to access response text
+        response_text = None
+        
+        # Method 1: Try the standard response.text accessor
+        try:
+            if response and response.text:
+                response_text = response.text
+                print(f"✅ Method 1 (response.text) successful - length: {len(response_text)}")
+        except Exception as e:
+            print(f"⚠️ Method 1 (response.text) failed: {e}")
+        
+        # Method 2: Try accessing parts directly if Method 1 failed
+        if not response_text and response and response.candidates:
+            try:
+                candidate = response.candidates[0]
+                if candidate.content and candidate.content.parts:
+                    response_text = candidate.content.parts[0].text
+                    print(f"✅ Method 2 (direct parts access) successful - length: {len(response_text)}")
+            except Exception as e:
+                print(f"⚠️ Method 2 (direct parts access) failed: {e}")
+        
+        # Method 3: Try alternative text extraction
+        if not response_text and response and response.candidates:
+            try:
+                candidate = response.candidates[0]
+                if hasattr(candidate, 'text'):
+                    response_text = candidate.text
+                    print(f"✅ Method 3 (candidate.text) successful - length: {len(response_text)}")
+            except Exception as e:
+                print(f"⚠️ Method 3 (candidate.text) failed: {e}")
+        
+        if not response_text:
+            error_msg = f"Gemini API returned no accessible text content. Finish reason: {response.candidates[0].finish_reason if response and response.candidates else 'unknown'}"
             print(f"✗ {error_msg}")
             return create_failed_analysis_result(blog_post, error_msg)
         
         # Create enhanced blog post with AI analysis
         analyzed_post = blog_post.copy()
         analyzed_post.update({
-            'ai_analysis': response.text.strip(),
+            'ai_analysis': response_text.strip(),
             'analysis_success': True,
             'analysis_error': None,
             'analysis_prompt_used': prompt_source,
