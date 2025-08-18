@@ -1878,7 +1878,11 @@ footer{{padding:24px;border-top:1px solid #e2e8f0;color:var(--muted);font-size:1
 </body>
 </html>'''
     
-    return html_content
+    # Generate filename for consistency with other report functions
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"chrome_enterprise_competitive_report_{timestamp}.html"
+    
+    return filename, html_content
 
 def generate_capability_classification_html(capabilities):
     """Generate HTML for capability term harvest classification"""
@@ -2620,8 +2624,37 @@ def create_professional_html_report(processed_posts, report_id, timestamp, repor
         print(f"   Feature inventory items: {len(data.get('feature_inventory', []))}")
     
     if has_competitive_data:
-        print("✅ Using create_enhanced_competitive_html_report")
-        return create_enhanced_competitive_html_report(processed_posts, report_id, timestamp, report_date)
+        print("✅ Using Markdown report generation")
+        # Import the markdown generation function
+        try:
+            from generate_report_from_input import create_competitive_intelligence_markdown
+            # Create systematic parsing data format
+            parsed_data = {
+                'executive_summary': processed_posts[0].get('structured_data', {}).get('executive_summary', ''),
+                'edge_competitive_gaps': processed_posts[0].get('structured_data', {}).get('edge_competitive_gaps', []),
+                'strategic_actions': processed_posts[0].get('structured_data', {}).get('strategic_actions', []),
+                'feature_parity_analysis': processed_posts[0].get('structured_data', {}).get('feature_parity_chart', {}),
+                'ux_competitive_analysis': processed_posts[0].get('structured_data', {}).get('ux_delta_teardown', []),
+                'edge_advantages': processed_posts[0].get('structured_data', {}).get('edge_advantage_highlights', []),
+                'evidence_base': processed_posts[0].get('structured_data', {}).get('evidence_register', []),
+                'capability_term_harvest': processed_posts[0].get('structured_data', {}).get('capability_term_harvest', []),
+                'diff_matrix': processed_posts[0].get('structured_data', {}).get('diff_matrix', []),
+                'feature_inventory': processed_posts[0].get('structured_data', {}).get('feature_inventory', []),
+                'problem_solution_map': processed_posts[0].get('structured_data', {}).get('problem_solution_map', [])
+            }
+            
+            markdown_content = create_competitive_intelligence_markdown(parsed_data)
+            
+            # Generate filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"competitive_intelligence_markdown_{timestamp}.md"
+            
+            return filename, markdown_content
+            
+        except ImportError as e:
+            print(f"⚠️ Markdown generation not available: {e}")
+            print("⚠️ Falling back to legacy HTML report")
+            return create_legacy_html_report(processed_posts, report_id, timestamp, report_date)
     else:
         print("⚠️ Using create_legacy_html_report")
         return create_legacy_html_report(processed_posts, report_id, timestamp, report_date)
