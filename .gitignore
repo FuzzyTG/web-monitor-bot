@@ -61,8 +61,8 @@ test_*.json
 test_*.py
 test_results/
 
-# Runtime data files
-previous_blog_posts.json
+# Runtime data files (excluding state file needed for persistence)
+# previous_blog_posts.json - REMOVED: This file needs to be committed for GitHub Actions state persistence
 error_handling.py
 verify_updated_prompt.py
 

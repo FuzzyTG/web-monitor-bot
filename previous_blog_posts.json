@@ -1,0 +1,107 @@
+{
+  "posts": [
+    {
+      "title": "Chrome brings seamless work and personal switching to iOS and enhanced enterprise protections to mobile",
+      "url": "https://cloud.google.com/blog/products/chrome-enterprise/chrome-brings-personal-and-work-separation-to-ios-users-and-more-enterprise-protections-to-mobile",
+      "author": "Martin Chown",
+      "read_time": "3 minute read",
+      "publish_date": "Unknown",
+      "id": "chrome-brings-personal-and-work-separation-to-ios-users-and-more-enterprise-protections-to-mobile",
+      "summary": "Chrome Enterprise blog post: Chrome brings seamless work and personal switching to iOS and enhanced enterprise protections to mob..."
+    },
+    {
+      "title": "5 ways Chrome Enterprise enhances Windows 11 environments",
+      "url": "https://cloud.google.com/blog/products/chrome-enterprise/5-ways-chrome-enterprise-enhances-windows-11-environments",
+      "author": "Hakan Kilic",
+      "read_time": "4 minute read",
+      "publish_date": "Unknown",
+      "id": "5-ways-chrome-enterprise-enhances-windows-11-environments",
+      "summary": "Chrome Enterprise blog post: 5 ways Chrome Enterprise enhances Windows 11 environments..."
+    },
+    {
+      "title": "How ChromeOS devices support health and wellness at Stallant Health",
+      "url": "https://cloud.google.com/blog/products/chrome-enterprise/how-chromeos-devices-support-health-and-wellness-at-stallant-health",
+      "author": "Randall Steffens",
+      "read_time": "4 minute read",
+      "publish_date": "Unknown",
+      "id": "how-chromeos-devices-support-health-and-wellness-at-stallant-health",
+      "summary": "Chrome Enterprise blog post: How ChromeOS devices support health and wellness at Stallant Health..."
+    },
+    {
+      "title": "Wayfair Transforms Contact Center Operations with ChromeOS and ChromeOS Flex",
+      "url": "https://cloud.google.com/blog/products/chrome-enterprise/wayfair-transforms-contact-center-operations-with-chromeos-and-chromeos-flex",
+      "author": "Asad Rahman",
+      "read_time": "5 minute read",
+      "publish_date": "Unknown",
+      "id": "wayfair-transforms-contact-center-operations-with-chromeos-and-chromeos-flex",
+      "summary": "Chrome Enterprise blog post: Wayfair Transforms Contact Center Operations with ChromeOS and ChromeOS Flex..."
+    },
+    {
+      "title": "How Cake, Vietnam's leading digital bank, found the right mix of simplicity and security with ChromeOS and Chrome Enterprise",
+      "url": "https://cloud.google.com/blog/products/chrome-enterprise/how-cake-vietnams-leading-digital-bank-found-the-right-mix-of-simplicity-and-security-with-chromeos-and-chrome-enterprise",
+      "author": "Hi\u1ec3n T\u1eeb Th\u1ebf (Jay)",
+      "read_time": "3 minute read",
+      "publish_date": "Unknown",
+      "id": "how-cake-vietnams-leading-digital-bank-found-the-right-mix-of-simplicity-and-security-with-chromeos-and-chrome-enterprise",
+      "summary": "Chrome Enterprise blog post: How Cake, Vietnam's leading digital bank, found the right mix of simplicity and security with Chrome..."
+    },
+    {
+      "title": "How ChromeOS propelled Korean Air's digital transformation",
+      "url": "https://cloud.google.com/blog/products/chrome-enterprise/how-chromeos-propelled-korean-airs-digital-transformation",
+      "author": "Choi HeeJung",
+      "read_time": "4 minute read",
+      "publish_date": "Unknown",
+      "id": "how-chromeos-propelled-korean-airs-digital-transformation",
+      "summary": "Chrome Enterprise blog post: How ChromeOS propelled Korean Air's digital transformation..."
+    },
+    {
+      "title": "The Future is Collaborative: ChromeOS Customer Community",
+      "url": "https://cloud.google.com/blog/products/chrome-enterprise/the-future-is-collaborative-chromeos-customer-community",
+      "author": "Lawrence Lui",
+      "read_time": "2 minute read",
+      "publish_date": "Unknown",
+      "id": "the-future-is-collaborative-chromeos-customer-community",
+      "summary": "Chrome Enterprise blog post: The Future is Collaborative: ChromeOS Customer Community..."
+    },
+    {
+      "title": "Securely deploy ChromeOS Flex \u2013 from anywhere",
+      "url": "https://cloud.google.com/blog/products/chrome-enterprise/securely-deploy-chromeos-flex-from-anywhere",
+      "author": "Will Smith",
+      "read_time": "3 minute read",
+      "publish_date": "Unknown",
+      "id": "securely-deploy-chromeos-flex-from-anywhere",
+      "summary": "Chrome Enterprise blog post: Securely deploy ChromeOS Flex \u2013 from anywhere..."
+    },
+    {
+      "title": "Work Smarter with Chromebook Plus and Google AI",
+      "url": "https://cloud.google.com/blog/products/chrome-enterprise/work-smarter-with-chromebook-plus-and-google-ai",
+      "author": "Ameet Jani",
+      "read_time": "4 minute read",
+      "publish_date": "Unknown",
+      "id": "work-smarter-with-chromebook-plus-and-google-ai",
+      "summary": "Chrome Enterprise blog post: Work Smarter with Chromebook Plus and Google AI..."
+    },
+    {
+      "title": "Is your browser a blindspot in your security strategy?",
+      "url": "https://cloud.google.com/blog/products/chrome-enterprise/is-your-browser-a-blindspot-in-your-security-strategy",
+      "author": "Christopher Altman",
+      "read_time": "2 minute read",
+      "publish_date": "Unknown",
+      "id": "is-your-browser-a-blindspot-in-your-security-strategy",
+      "summary": "Chrome Enterprise blog post: Is your browser a blindspot in your security strategy?..."
+    }
+  ],
+  "metadata": {
+    "last_checked": "2025-08-19T00:05:07.306774",
+    "total_posts": 10,
+    "monitoring_url": "unknown",
+    "check_type": "production_monitoring_v2",
+    "new_posts_found": 10,
+    "new_posts_analyzed": 1,
+    "report_id": "20250819_000502_a469ea",
+    "report_url": "file:///Users/alexyuan/Downloads/Projects/FuzzyTG/web-monitor-bot/reports/chrome_enterprise_report_20250819_000502_a469ea.md",
+    "email_sent": true,
+    "email_sent_at": "2025-08-19T00:05:07.306650",
+    "notification_type": "new_posts"
+  }
+}

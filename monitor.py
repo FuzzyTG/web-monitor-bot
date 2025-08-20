@@ -1015,7 +1015,7 @@ def analyze_blog_post_with_ai(blog_post, custom_prompt=None):
         formatted_prompt = format_blog_prompt(analysis_prompt, blog_post)
         
         # Determine content length for analysis (limit to manage costs)
-        content_for_analysis = content[:4000] if len(content) > 4000 else content
+        content_for_analysis = content[:8000] if len(content) > 8000 else content
         
         print(f"Sending content to Gemini AI (content length: {len(content_for_analysis)} chars)")
         print(f"Using prompt source: {prompt_source}")
@@ -4980,7 +4980,7 @@ def format_blog_prompt(prompt_template, blog_post):
         'author': blog_post.get('author', 'Unknown Author'),
         'publish_date': blog_post.get('publish_date', 'Unknown Date'),
         'url': blog_post.get('url', 'Unknown URL'),
-        'content': blog_post.get('content', 'No content available')[:4000]  # Limit content length
+        'content': blog_post.get('content', 'No content available')[:8000]  # Limit content length
     }
     
     try:

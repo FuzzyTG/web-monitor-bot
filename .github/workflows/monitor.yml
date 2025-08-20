@@ -92,6 +92,40 @@ jobs:
             uv run python production_pipeline.py --notification-type "$NOTIFICATION_TYPE"
           fi
 
+      - name: Commit state changes
+        if: always()
+        run: |
+          echo "💾 Checking for state changes to commit"
+          
+          # Check if previous_blog_posts.json has changes
+          if git diff --quiet previous_blog_posts.json 2>/dev/null; then
+            echo "✅ No state changes to commit"
+          else
+            echo "📝 State changes detected, committing to preserve monitoring state"
+            
+            # Add the state file
+            git add previous_blog_posts.json
+            
+            # Create commit message with metadata
+            COMMIT_MSG="Update monitoring state - $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+            - Trigger: ${{ github.event_name }}
+            - Force Analysis: ${{ github.event.inputs.force_analysis || 'false' }}
+            - Notification Type: ${{ github.event.inputs.notification_type || 'new_posts' }}
+            
+            🤖 Generated with Claude Code
+            
+            Co-Authored-By: Claude <noreply@anthropic.com>"
+            
+            # Commit changes
+            git commit -m "$COMMIT_MSG"
+            
+            # Push to main branch
+            git push origin main
+            
+            echo "✅ State changes committed and pushed successfully"
+          fi
+
       - name: Setup Pages
         if: always()
         uses: actions/configure-pages@v4
