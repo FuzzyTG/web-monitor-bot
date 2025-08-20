@@ -40,17 +40,20 @@ from monitor import (
     get_individual_blog_content, 
     analyze_blog_post_with_ai,
     generate_email_summary,
-    generate_html_report,
+    generate_markdown_report,
     generate_report_id,
-    save_html_report_to_file,
+    save_markdown_report_to_file,
     publish_report_and_get_url,
     send_concise_notification
 )
 
-def production_monitoring_pipeline():
+def production_monitoring_pipeline(limit=None):
     """
     Production pipeline that only processes NEW blog posts
     This ensures we only send emails about truly new content
+    
+    Args:
+        limit (int, optional): Limit processing to first N posts (useful for testing)
     """
     print("🔍 PRODUCTION MONITORING PIPELINE - NEW POSTS ONLY")
     print("=" * 70)
@@ -107,6 +110,12 @@ def production_monitoring_pipeline():
         sorted_new_posts = sort_posts_by_date(new_posts)
         print(f"✅ Sorted {len(sorted_new_posts)} new posts by publication date")
         
+        # Apply limit if specified (for testing purposes)
+        if limit and limit > 0:
+            original_count = len(sorted_new_posts)
+            sorted_new_posts = sorted_new_posts[:limit]
+            print(f"🔒 LIMIT APPLIED: Processing only first {len(sorted_new_posts)} of {original_count} posts")
+        
         # Step 5: Extract content for NEW posts only
         print(f"\n📖 STEP 5: EXTRACTING CONTENT (NEW POSTS ONLY)")
         print("=" * 50)
@@ -162,23 +171,23 @@ def production_monitoring_pipeline():
                 print(f"⚠️ Summary generation failed for post {i}: {e}")
                 post['email_summary'] = f"Chrome Enterprise update: {post.get('title', 'Unknown')[:50]}..."
         
-        # Step 8: Generate HTML Report (NEW - Phase 2)
-        print(f"\n📄 STEP 8: GENERATING HTML REPORT")
+        # Step 8: Generate Markdown Report (UPDATED - Switched from HTML to Markdown)
+        print(f"\n📄 STEP 8: GENERATING MARKDOWN REPORT")
         print("=" * 50)
         
         report_id = generate_report_id()
         print(f"📋 Report ID: {report_id}")
         
-        filename, html_content = generate_html_report(analyzed_posts, report_id)
-        if not filename or not html_content:
-            print("❌ HTML report generation failed")
+        filename, markdown_content = generate_markdown_report(analyzed_posts, report_id)
+        if not filename or not markdown_content:
+            print("❌ Markdown report generation failed")
             return False
         
-        print(f"✅ HTML report generated: {filename}")
-        print(f"📊 Content length: {len(html_content):,} characters")
+        print(f"✅ Markdown report generated: {filename}")
+        print(f"📊 Content length: {len(markdown_content):,} characters")
         
         # Save report to file
-        success, file_path, error = save_html_report_to_file(filename, html_content)
+        success, file_path, error = save_markdown_report_to_file(filename, markdown_content)
         if not success:
             print(f"❌ Failed to save report: {error}")
             return False
@@ -244,7 +253,7 @@ def production_monitoring_pipeline():
                     'posts_count': len(analyzed_posts),
                     'high_priority_count': len([p for p in analyzed_posts if p.get('structured_data', {}).get('priority_level') == 'High']),
                     'analysis_success_count': len(analyzed_posts),
-                    'file_size_bytes': len(html_content),
+                    'file_size_bytes': len(markdown_content),
                     'urls': {'web_url': report_url},
                     'email_sent': True,
                     'email_sent_at': email_result['email_sent_at']
@@ -382,6 +391,7 @@ def main():
                        help='Type of notification to send')
     parser.add_argument('--config-check', action='store_true', help='Check system configuration and exit')
     parser.add_argument('--cleanup', action='store_true', help='Run report cleanup and exit')
+    parser.add_argument('--limit', type=int, help='Limit analysis to first N posts (useful for testing)')
     
     args = parser.parse_args()
     
@@ -439,7 +449,7 @@ def main():
                     shutil.copy('previous_blog_posts.json', backup_file)
                     os.remove('previous_blog_posts.json')
                 
-                success = production_monitoring_pipeline()
+                success = production_monitoring_pipeline(limit=args.limit)
                 
                 # Restore backup
                 if backup_file and os.path.exists(backup_file):
@@ -464,12 +474,12 @@ def main():
         else:
             # Default: run production monitoring
             print("🚀 Starting Production Monitoring...")
-            return production_monitoring_pipeline()
+            return production_monitoring_pipeline(limit=args.limit)
     
     # Interactive mode (no CLI arguments)
     print("🎯 MICROSOFT EDGE COMPETITIVE INTELLIGENCE - PRODUCTION MONITORING V2")
     print("=" * 85)
-    print("Enhanced with Phase 2 features: HTML Reports + GitHub Pages + Concise Emails")
+    print("Enhanced with Phase 2 features: Markdown Reports + GitHub Pages + Concise Emails")
     print("\nChoose your monitoring mode:")
     print("1. Production Monitoring (NEW posts only)")
     print("2. Force Analysis (ALL posts)")
