@@ -1,6 +1,24 @@
 {
   "posts": [
     {
+      "title": "Chrome brings seamless work and personal switching to iOS and enhanced enterprise protections to mobile",
+      "url": "https://cloud.google.com/blog/products/chrome-enterprise/chrome-brings-personal-and-work-separation-to-ios-users-and-more-enterprise-protections-to-mobile",
+      "author": "Martin Chown",
+      "read_time": "3 minute read",
+      "publish_date": "Unknown",
+      "id": "chrome-brings-personal-and-work-separation-to-ios-users-and-more-enterprise-protections-to-mobile",
+      "summary": "Chrome Enterprise blog post: Chrome brings seamless work and personal switching to iOS and enhanced enterprise protections to mob..."
+    },
+    {
+      "title": "ChromeOS desk sync keeps your momentum going, across devices",
+      "url": "https://cloud.google.com/blog/products/chrome-enterprise/chromeos-desk-sync-keeps-your-momentum-going-across-devices",
+      "author": "Marcus Koehler",
+      "read_time": "3 minute read",
+      "publish_date": "Unknown",
+      "id": "chromeos-desk-sync-keeps-your-momentum-going-across-devices",
+      "summary": "Chrome Enterprise blog post: ChromeOS desk sync keeps your momentum going, across devices..."
+    },
+    {
       "title": "5 ways Chrome Enterprise enhances Windows 11 environments",
       "url": "https://cloud.google.com/blog/products/chrome-enterprise/5-ways-chrome-enterprise-enhances-windows-11-environments",
       "author": "Hakan Kilic",
@@ -71,28 +89,19 @@
       "publish_date": "Unknown",
       "id": "work-smarter-with-chromebook-plus-and-google-ai",
       "summary": "Chrome Enterprise blog post: Work Smarter with Chromebook Plus and Google AI..."
-    },
-    {
-      "title": "Is your browser a blindspot in your security strategy?",
-      "url": "https://cloud.google.com/blog/products/chrome-enterprise/is-your-browser-a-blindspot-in-your-security-strategy",
-      "author": "Christopher Altman",
-      "read_time": "2 minute read",
-      "publish_date": "Unknown",
-      "id": "is-your-browser-a-blindspot-in-your-security-strategy",
-      "summary": "Chrome Enterprise blog post: Is your browser a blindspot in your security strategy?..."
     }
   ],
   "metadata": {
-    "last_checked": "2025-08-19T00:05:07.306774",
+    "last_checked": "2025-08-20T03:42:07.519481",
     "total_posts": 10,
     "monitoring_url": "unknown",
     "check_type": "production_monitoring_v2",
-    "new_posts_found": 10,
-    "new_posts_analyzed": 1,
-    "report_id": "20250819_000502_a469ea",
-    "report_url": "file:///Users/alexyuan/Downloads/Projects/FuzzyTG/web-monitor-bot/reports/chrome_enterprise_report_20250819_000502_a469ea.md",
+    "new_posts_found": 2,
+    "new_posts_analyzed": 2,
+    "report_id": "20250820_034206_6cb048",
+    "report_url": "file:///home/runner/work/web-monitor-bot/web-monitor-bot/reports/chrome_enterprise_report_20250820_034206_6cb048.md",
     "email_sent": true,
-    "email_sent_at": "2025-08-19T00:05:07.306650",
+    "email_sent_at": "2025-08-20T03:42:07.519449",
     "notification_type": "new_posts"
   }
 }
