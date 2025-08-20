@@ -1,0 +1,38 @@
+title: "Microsoft Edge Competitive Intelligence"
+description: "Automated competitive intelligence monitoring system for Microsoft Edge"
+baseurl: "/web-monitor-bot/reports"
+url: "https://fuzzytg.github.io"
+
+# Jekyll settings
+markdown: kramdown
+highlighter: rouge
+theme: minima
+
+# Collections
+collections:
+  reports:
+    output: true
+    permalink: /:collection/:name/
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "reports"
+    values:
+      layout: "default"
+
+# Exclude files
+exclude:
+  - README.md
+  - templates/
+  - generated/
+
+# Include markdown files
+include:
+  - "*.md"
+
+# Plugins
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap

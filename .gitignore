@@ -66,5 +66,6 @@ test_results/
 error_handling.py
 verify_updated_prompt.py
 
-# Generated reports (optional - can be committed selectively)
+# Generated reports (allow index files for GitHub Pages)
 reports/*.html
+!reports/index.html
