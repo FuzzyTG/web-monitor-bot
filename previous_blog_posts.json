@@ -92,16 +92,11 @@
     }
   ],
   "metadata": {
-    "last_checked": "2025-08-20T03:42:07.519481",
+    "last_checked": "2025-08-20T09:12:46.925381",
     "total_posts": 10,
     "monitoring_url": "unknown",
-    "check_type": "production_monitoring_v2",
-    "new_posts_found": 2,
-    "new_posts_analyzed": 2,
-    "report_id": "20250820_034206_6cb048",
-    "report_url": "file:///home/runner/work/web-monitor-bot/web-monitor-bot/reports/chrome_enterprise_report_20250820_034206_6cb048.md",
-    "email_sent": true,
-    "email_sent_at": "2025-08-20T03:42:07.519449",
-    "notification_type": "new_posts"
+    "check_type": "production_monitoring",
+    "new_posts_found": 0,
+    "total_posts_checked": 10
   }
 }
