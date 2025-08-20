@@ -57,8 +57,8 @@ except ImportError:
             return {'success': False, 'message': str(error)}
         
         @staticmethod
-        def github_publishing_fallback(html_file_path, report_id, error):
-            return True, f"file://{os.path.abspath(html_file_path)}", str(error)
+        def github_publishing_fallback(markdown_file_path, report_id, error):
+            return True, f"file://{os.path.abspath(markdown_file_path)}", str(error)
 
 @retry_with_exponential_backoff(max_retries=3, base_delay=2.0)
 def extract_blog_posts(soup=None):
@@ -1037,9 +1037,13 @@ def analyze_blog_post_with_ai(blog_post, custom_prompt=None):
                 candidate = response.candidates[0]
                 print(f"   Finish reason: {candidate.finish_reason}")
                 print(f"   Content exists: {candidate.content is not None}")
-                if candidate.content and candidate.content.parts:
-                    print(f"   Parts count: {len(candidate.content.parts)}")
-                    print(f"   First part type: {type(candidate.content.parts[0]) if candidate.content.parts else 'None'}")
+                if candidate.content:
+                    print(f"   Content parts exist: {candidate.content.parts is not None}")
+                    if candidate.content.parts:
+                        print(f"   Parts count: {len(candidate.content.parts)}")
+                        print(f"   First part type: {type(candidate.content.parts[0]) if candidate.content.parts else 'None'}")
+                    else:
+                        print(f"   Parts is None or empty")
         else:
             print(f"   Response object exists: False")
         
@@ -1058,9 +1062,20 @@ def analyze_blog_post_with_ai(blog_post, custom_prompt=None):
         if not response_text and response and response.candidates:
             try:
                 candidate = response.candidates[0]
-                if candidate.content and candidate.content.parts:
-                    response_text = candidate.content.parts[0].text
-                    print(f"✅ Method 2 (direct parts access) successful - length: {len(response_text)}")
+                print(f"🔍 Method 2 debug - candidate.content: {candidate.content is not None}")
+                if candidate.content:
+                    print(f"🔍 Method 2 debug - candidate.content.parts: {candidate.content.parts}")
+                    if candidate.content.parts and len(candidate.content.parts) > 0:
+                        part = candidate.content.parts[0]
+                        print(f"🔍 Method 2 debug - part type: {type(part)}")
+                        print(f"🔍 Method 2 debug - part attributes: {dir(part)}")
+                        if hasattr(part, 'text'):
+                            response_text = part.text
+                            print(f"✅ Method 2 (direct parts access) successful - length: {len(response_text)}")
+                        else:
+                            print(f"⚠️ Method 2: Part has no 'text' attribute")
+                    else:
+                        print(f"⚠️ Method 2: No parts available")
             except Exception as e:
                 print(f"⚠️ Method 2 (direct parts access) failed: {e}")
         
@@ -1068,11 +1083,26 @@ def analyze_blog_post_with_ai(blog_post, custom_prompt=None):
         if not response_text and response and response.candidates:
             try:
                 candidate = response.candidates[0]
+                print(f"🔍 Method 3 debug - candidate attributes: {[attr for attr in dir(candidate) if not attr.startswith('_')]}")
                 if hasattr(candidate, 'text'):
                     response_text = candidate.text
                     print(f"✅ Method 3 (candidate.text) successful - length: {len(response_text)}")
+                else:
+                    print(f"⚠️ Method 3: Candidate has no 'text' attribute")
             except Exception as e:
                 print(f"⚠️ Method 3 (candidate.text) failed: {e}")
+        
+        # Method 4: Try accessing response parts at top level
+        if not response_text and response:
+            try:
+                print(f"🔍 Method 4 debug - response attributes: {[attr for attr in dir(response) if not attr.startswith('_')]}")
+                if hasattr(response, 'parts') and response.parts:
+                    response_text = response.parts[0].text
+                    print(f"✅ Method 4 (response.parts) successful - length: {len(response_text)}")
+                else:
+                    print(f"⚠️ Method 4: Response has no 'parts' attribute or parts is empty")
+            except Exception as e:
+                print(f"⚠️ Method 4 (response.parts) failed: {e}")
         
         if not response_text:
             error_msg = f"Gemini API returned no accessible text content. Finish reason: {response.candidates[0].finish_reason if response and response.candidates else 'unknown'}"
@@ -1150,72 +1180,36 @@ def create_failed_analysis_result(blog_post, error_message):
 
 def generate_email_summary(analyzed_post):
     """
-    Generate a concise one-line summary for email notifications
+    Generate a concise summary for email notifications using title and content preview
     
     Args:
-        analyzed_post (dict): Blog post with AI analysis
+        analyzed_post (dict): Blog post data
         
     Returns:
-        str: Concise summary (max 100 characters) for email
+        str: Summary with title and first 100 words for email notification
     """
     if not analyzed_post or not isinstance(analyzed_post, dict):
         return "Unable to generate summary - invalid post data"
     
-    # Check if we have successful AI analysis
-    analysis = analyzed_post.get('ai_analysis', '')
     title = analyzed_post.get('title', 'Unknown Post')
+    content = analyzed_post.get('content', '')
     
-    if not analysis or not analyzed_post.get('analysis_success', False):
-        # Fallback to title-based summary
-        return f"New post: {title[:60]}..." if len(title) > 60 else f"New post: {title}"
+    # If no content available, return title-only summary
+    if not content or len(content.strip()) < 10:
+        return f"New Chrome Enterprise post: {title}"
     
-    try:
-        # Configure Gemini API for summary generation
-        api_key = os.getenv('GEMINI_API_KEY')
-        if not api_key:
-            return f"Chrome Enterprise update: {title[:50]}..."
-        
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(os.getenv('GEMINI_MODEL', 'gemini-2.5-pro'))
-        
-        # Create focused prompt for email summary
-        summary_prompt = f"""
-        Create a single-line executive summary (max 80 characters) for this Chrome Enterprise analysis.
-        
-        Focus on the KEY business impact or competitive threat for Microsoft Edge.
-        
-        Format examples:
-        - "New Chrome security features may challenge Edge's enterprise positioning"
-        - "Google expands workspace integration, potential Edge threat identified"
-        - "Chrome Enterprise pricing changes could benefit Microsoft strategy"
-        
-        Analysis to summarize:
-        {analysis[:800]}
-        
-        Return ONLY the summary line, no explanations.
-        """
-        
-        generation_config = genai.types.GenerationConfig(
-            temperature=0,
-            candidate_count=1,
-            top_p=1.0
-        )
-        response = model.generate_content(summary_prompt, generation_config=generation_config)
-        
-        if response and response.text:
-            summary = response.text.strip()
-            # Ensure it's not too long
-            if len(summary) > 100:
-                summary = summary[:97] + "..."
-            return summary
-        else:
-            # Fallback if AI doesn't respond
-            return f"Chrome Enterprise update: {title[:50]}..."
-            
-    except Exception as e:
-        print(f"Warning: Failed to generate AI summary: {e}")
-        # Fallback summary based on title
-        return f"Chrome Enterprise update: {title[:50]}..."
+    # Extract first 100 words from content
+    words = content.split()
+    if len(words) > 100:
+        preview_text = ' '.join(words[:100]) + "..."
+    else:
+        preview_text = ' '.join(words)
+    
+    # Clean up the preview text (remove extra whitespace)
+    preview_text = ' '.join(preview_text.split())
+    
+    # Return formatted summary
+    return f"{title}\n\n{preview_text}"
 
 def extract_structured_data_from_analysis(analysis_text):
     """
@@ -1610,20 +1604,24 @@ def extract_legacy_structured_data_from_analysis(analysis_text):
         print(f"Warning: Failed to extract structured data: {e}")
         return None
 
-def generate_html_report(analyzed_posts, report_id):
+def generate_markdown_report(analyzed_posts, report_id):
     """
-    Generate a comprehensive standalone HTML report
+    Generate a comprehensive standalone Markdown report
     
     Args:
         analyzed_posts (list): List of analyzed blog posts
         report_id (str): Unique identifier for this report
         
     Returns:
-        tuple: (filename, html_content) or (None, None) if failed
+        tuple: (filename, markdown_content) or (None, None) if failed
     """
     if not analyzed_posts:
-        print("Error: No analyzed posts provided for HTML report generation")
+        print("Error: No analyzed posts provided for Markdown report generation")
         return None, None
+    
+    # Defensive check: Ensure we're generating Markdown only
+    print(f"📝 Generating Markdown report for {len(analyzed_posts)} posts")
+    print(f"🔧 Report ID: {report_id}")
     
     try:
         timestamp = datetime.now().strftime('%B %d, %Y at %I:%M %p')
@@ -1632,7 +1630,7 @@ def generate_html_report(analyzed_posts, report_id):
         # Process each post to extract structured data
         processed_posts = []
         for i, post in enumerate(analyzed_posts, 1):
-            print(f"Processing post {i}/{len(analyzed_posts)} for HTML report...")
+            print(f"Processing post {i}/{len(analyzed_posts)} for Markdown report...")
             
             # Extract structured data from analysis
             structured_data = extract_structured_data_from_analysis(post.get('ai_analysis', ''))
@@ -1649,840 +1647,132 @@ def generate_html_report(analyzed_posts, report_id):
             }
             processed_posts.append(processed_post)
         
-        # Generate HTML content
-        html_content = create_professional_html_report(processed_posts, report_id, timestamp, report_date)
+        # Generate Markdown content using the enhanced markdown report function
+        try:
+            from generate_report_from_input import create_competitive_intelligence_markdown
+            
+            # Aggregate data from all processed posts
+            aggregated_data = {
+                'executive_summary': 'Comprehensive analysis of Chrome Enterprise updates and their competitive implications for Microsoft Edge.',
+                'edge_competitive_gaps': [],
+                'strategic_actions': [],
+                'evidence_base': [],
+                'edge_advantages': [],
+                'capability_term_harvest': [],
+                'feature_inventory': [],
+                'ux_competitive_analysis': [],
+                'feature_parity_analysis': {},
+                'diff_matrix': [],
+                'problem_solution_map': []
+            }
+            
+            # Extract data from structured analysis
+            for post in processed_posts:
+                if post.get('structured_data'):
+                    data = post['structured_data']
+                    if data.get('competitive_threats'):
+                        aggregated_data['edge_competitive_gaps'].extend(data['competitive_threats'])
+                    if data.get('recommendations'):
+                        for rec in data['recommendations']:
+                            aggregated_data['strategic_actions'].append({
+                                'chrome_feature': post['title'],
+                                'platform': 'All',
+                                'edge_action': 'Match',
+                                'rationale': rec,
+                                'evidence_ids': []
+                            })
+            
+            # Convert data to the format expected by the enhanced function
+            parsed_data = {
+                'executive_summary': processed_posts[0].get('structured_data', {}).get('executive_summary', aggregated_data['executive_summary']),
+                'edge_competitive_gaps': processed_posts[0].get('structured_data', {}).get('edge_competitive_gaps', []),
+                'strategic_actions': processed_posts[0].get('structured_data', {}).get('strategic_actions', []),
+                'feature_parity_analysis': processed_posts[0].get('structured_data', {}).get('feature_parity_chart', {}),
+                'ux_competitive_analysis': processed_posts[0].get('structured_data', {}).get('ux_delta_teardown', []),
+                'edge_advantages': processed_posts[0].get('structured_data', {}).get('edge_advantage_highlights', []),
+                'evidence_base': processed_posts[0].get('structured_data', {}).get('evidence_register', []),
+                'capability_term_harvest': processed_posts[0].get('structured_data', {}).get('capability_term_harvest', []),
+                'diff_matrix': processed_posts[0].get('structured_data', {}).get('diff_matrix', []),
+                'feature_inventory': processed_posts[0].get('structured_data', {}).get('feature_inventory', []),
+                'problem_solution_map': processed_posts[0].get('structured_data', {}).get('problem_solution_map', [])
+            }
+            
+            markdown_content = create_competitive_intelligence_markdown(parsed_data)
+            
+        except ImportError:
+            # Fallback to simple markdown generation
+            markdown_content = f"""# Chrome vs Edge — Competitive Intelligence Brief
+
+**Generated:** {timestamp} • **Audience:** PM/Engineering • **Status:** Draft
+
+---
+
+## Executive Summary
+
+Analysis of {len(processed_posts)} Chrome Enterprise blog posts for competitive intelligence.
+
+"""
+            
+            for i, post in enumerate(processed_posts, 1):
+                data = post.get('structured_data', {})
+                markdown_content += f"""
+## Post {i}: {post['title']}
+
+**Author:** {post['author']}  
+**Published:** {post['publish_date']}  
+**URL:** {post['url']}
+
+### Analysis Summary
+{data.get('executive_summary', 'No summary available')}
+
+### Priority Level
+{data.get('priority_level', 'Medium')}
+
+### Competitive Threats
+"""
+                if data.get('competitive_threats'):
+                    for threat in data['competitive_threats']:
+                        markdown_content += f"- {threat}\n"
+                else:
+                    markdown_content += "- None identified\n"
+                
+                markdown_content += f"""
+### Opportunities
+"""
+                if data.get('opportunities'):
+                    for opp in data['opportunities']:
+                        markdown_content += f"- {opp}\n"
+                else:
+                    markdown_content += "- None identified\n"
+                
+                markdown_content += f"""
+### Recommendations
+"""
+                if data.get('recommendations'):
+                    for rec in data['recommendations']:
+                        markdown_content += f"- {rec}\n"
+                else:
+                    markdown_content += "- None provided\n"
+                
+                markdown_content += "\n---\n"
         
         # Generate filename
-        filename = f"chrome_enterprise_report_{report_id}.html"
+        filename = f"chrome_enterprise_report_{report_id}.md"
         
-        print(f"✅ Generated HTML report: {filename}")
-        return filename, html_content
+        print(f"✅ Generated Markdown report: {filename}")
+        print(f"📊 Content length: {len(markdown_content):,} characters")
+        return filename, markdown_content
         
     except Exception as e:
-        print(f"Error generating HTML report: {e}")
+        print(f"Error generating report: {e}")
         import traceback
         traceback.print_exc()
         return None, None
 
-def create_enhanced_competitive_html_report(processed_posts, aggregated_data, reports_dir, report_date):
-    """
-    Create working competitive intelligence HTML report using proven template format
-    Based on the user's chrome-vs-edge-ios-redirect-gap-report-v13.html structure
-    
-    Args:
-        processed_posts (list): Posts with structured data
-        aggregated_data (dict): Aggregated analysis data
-        reports_dir (str): Reports directory 
-        report_date (str): Date in YYYY-MM-DD format
-        
-    Returns:
-        str: Complete working HTML content
-    """
-    from datetime import datetime
-    
-    # Extract data from aggregated_data
-    gaps = aggregated_data.get('edge_competitive_gaps', [])
-    strategic_actions = aggregated_data.get('strategic_actions', [])
-    evidence_base = aggregated_data.get('evidence_base', [])
-    executive_summary = aggregated_data.get('executive_summary', 'No executive summary available.')
-    edge_advantages = aggregated_data.get('edge_advantages', [])
-    capability_terms = aggregated_data.get('capability_term_harvest', [])
-    feature_inventory = aggregated_data.get('feature_inventory', [])
-    ux_analysis = aggregated_data.get('ux_competitive_analysis', [])
-    feature_parity = aggregated_data.get('feature_parity_analysis', {})
-    
-    # Generate strategic actions table
-    def generate_strategic_actions_table():
-        if not strategic_actions:
-            return "<p>No strategic actions available.</p>"
-        
-        html = '''<div class="table-wrap">
-      <table>
-        <thead><tr><th>Chrome Feature</th><th>Platform</th><th>Edge Action (Defend|Match|Leapfrog|Deprioritize)</th><th>Rationale (<=20 words)</th><th>Evidence IDs</th></tr></thead>
-        <tbody>'''
-        
-        for action in strategic_actions:
-            evidence_links = ""
-            if action.get('evidence_ids'):
-                evidence_links = ', '.join([f'<a href="#{eid}" class="evid-link">{eid}</a>' for eid in action['evidence_ids']])
-            
-            html += f'''
-          <tr><td>{action.get('chrome_feature', 'Unknown')}</td><td>{action.get('platform', 'Unknown')}</td><td>{action.get('edge_action', 'Unknown')}</td><td>{action.get('rationale', 'No rationale provided')}</td><td>{evidence_links}</td></tr>'''
-        
-        html += '''
-        </tbody>
-      </table>
-    </div>'''
-        return html
-    
-    # Generate feature parity tables for each platform
-    def generate_feature_parity_tables():
-        if not feature_parity:
-            return "<p>No feature parity data available.</p>"
-        
-        html_sections = []
-        
-        for platform, features in feature_parity.items():
-            if not features:
-                continue
-                
-            platform_title = platform.title()
-            html_sections.append(f'''    <section><h2>3) Feature Parity Chart — {platform_title}</h2>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Chrome Feature</th><th>Chrome DeliveryMode</th><th>Chrome AdminPlane</th><th>Chrome Granularity</th><th>Chrome RedirectSupport</th><th>Edge Capability</th><th>Edge DeliveryMode</th><th>Edge AdminPlane</th><th>Edge Granularity</th><th>Edge RedirectSupport</th><th>Delta &amp; Rationale</th><th>Parity Rating</th><th>Evidence IDs</th></tr></thead>
-        <tbody>''')
-            
-            for feature in features:
-                evidence_links = ""
-                if feature.get('evidence_ids'):
-                    evidence_links = ', '.join([f'<a href="#{eid}" class="evid-link">{eid}</a>' for eid in feature['evidence_ids']])
-                
-                html_sections.append(f'''
-          <tr><td>{feature.get('chrome_feature', 'Unknown')}</td><td>{feature.get('chrome_delivery_mode', 'Unknown')}</td><td>{feature.get('chrome_admin_plane', 'Unknown')}</td><td>{feature.get('chrome_granularity', 'Unknown')}</td><td>{feature.get('chrome_redirect_support', 'Unknown')}</td><td>{feature.get('edge_capability', 'Unknown')}</td><td>{feature.get('edge_delivery_mode', 'Unknown')}</td><td>{feature.get('edge_admin_plane', 'Unknown')}</td><td>{feature.get('edge_granularity', 'Unknown')}</td><td>{feature.get('edge_redirect_support', 'Unknown')}</td><td>{feature.get('delta_rationale', 'No rationale provided')}</td><td>{feature.get('parity_rating', 'Unknown')}</td><td>{evidence_links}</td></tr>''')
-            
-            html_sections.append('''
-        </tbody>
-      </table>
-    </div>
-    </section>''')
-        
-        return '\n'.join(html_sections)
-    
-    # Generate UX Delta Teardown table
-    def generate_ux_teardown_table():
-        if not ux_analysis:
-            return "<p>No UX teardown data available.</p>"
-        
-        html = '''<div class="table-wrap">
-      <table>
-        <thead><tr><th>Feature</th><th>Platform</th><th>Entry Trigger</th><th>Block/Switch Mechanism</th><th>Data/Account Boundary</th><th>Admin/Policy Controls</th><th>Redirect Path</th><th>Recovery Path</th><th>Notes</th><th>Evidence IDs</th></tr></thead>
-        <tbody>'''
-        
-        for ux in ux_analysis:
-            evidence_links = ""
-            if ux.get('evidence_ids'):
-                evidence_links = ', '.join([f'<a href="#{eid}" class="evid-link">{eid}</a>' for eid in ux['evidence_ids']])
-            
-            html += f'''
-          <tr><td>{ux.get('feature', 'Unknown')}</td><td>{ux.get('platform', 'Unknown')}</td><td>{ux.get('entry_trigger', 'Unknown')}</td><td>{ux.get('block_switch_mechanism', 'Unknown')}</td><td>{ux.get('data_account_boundary', 'Unknown')}</td><td>{ux.get('admin_policy_controls', 'Unknown')}</td><td>{ux.get('redirect_path', 'Unknown')}</td><td>{ux.get('recovery_path', 'Unknown')}</td><td>{ux.get('notes', 'Unknown')}</td><td>{evidence_links}</td></tr>'''
-        
-        html += '''
-        </tbody>
-      </table>
-    </div>'''
-        return html
-    
-    # Generate evidence cards
-    def generate_evidence_cards():
-        if not evidence_base:
-            return "<p>No evidence available.</p>"
-        
-        html_cards = []
-        for evidence in evidence_base:
-            platforms_str = ', '.join(evidence.get('platforms', ['Unknown']))
-            
-            html_cards.append(f'''    <div class="card" id="{evidence.get('id', 'N/A')}">
-      <div class="card-head"><span class="badge">{evidence.get('id', 'N/A')}</span> {evidence.get('product', 'Unknown')} · {evidence.get('feature', 'Unknown Feature')} · <span class="mono">{platforms_str}</span></div>
-      <div class="card-quote">"{evidence.get('quote', evidence.get('content', 'No quote available'))}"</div>
-      <div class="card-link"><a href="{evidence.get('url', evidence.get('source', '#'))}" target="_blank" rel="noopener">Source</a></div>
-    </div>''')
-        
-        return '\n    \n\n'.join(html_cards)
-    
-    # Generate capability term harvest table
-    def generate_capability_terms_table():
-        if not capability_terms:
-            return "<p>No capability terms available.</p>"
-        
-        html = '''<div class="table-wrap">
-      <table>
-        <thead><tr><th>Term</th><th>Class</th><th>Feature Name</th><th>Platforms (in sentence)</th><th>Quote</th><th>Evidence</th></tr></thead>
-        <tbody>'''
-        
-        for term in capability_terms:
-            platforms_str = ', '.join(term.get('platforms_in_sentence', ['Unknown']))
-            evidence_link = f'<a href="#{term.get("evidence_id", "N/A")}">{term.get("evidence_id", "N/A")}</a>' if term.get('evidence_id') else 'N/A'
-            
-            html += f'''
-          <tr><td>{term.get('term', 'Unknown')}</td><td>{term.get('class', 'Unknown')}</td><td>{term.get('feature_name', 'Unknown')}</td><td>{platforms_str}</td><td>{term.get('quote', 'No quote available')}</td><td>&lt;a href=&quot;#{term.get("evidence_id", "N/A")}&quot;&gt;{term.get("evidence_id", "N/A")}&lt;/a&gt;</td></tr>'''
-        
-        html += '''
-        </tbody>
-      </table>
-    </div>'''
-        return html
-    
-    # Generate feature inventory table
-    def generate_feature_inventory_table():
-        if not feature_inventory:
-            return "<p>No feature inventory available.</p>"
-        
-        html = '''<div class="table-wrap">
-      <table>
-        <thead><tr><th>Name</th><th>Purpose</th><th>Direct Quote (≤40w)</th><th>Platforms in Source</th></tr></thead>
-        <tbody>'''
-        
-        for feature in feature_inventory:
-            platforms_str = ', '.join(feature.get('platforms_in_source', ['Unknown']))
-            
-            html += f'''
-          <tr><td>{feature.get('name', 'Unknown')}</td><td>{feature.get('one_line_purpose', 'Unknown purpose')}</td><td>{feature.get('direct_quote', 'No quote available')}</td><td>{platforms_str}</td></tr>'''
-        
-        html += '''
-        </tbody>
-      </table>
-    </div>'''
-        return html
-    
-    # Generate Edge advantages list
-    def generate_edge_advantages():
-        if not edge_advantages:
-            return "<p>No Edge advantages identified.</p>"
-        
-        advantages_html = []
-        for advantage in edge_advantages:
-            advantages_html.append(f'<li>{advantage}</li>')
-        
-        return f'<ul>{"".join(advantages_html)}</ul>'
-    
-    # Generate competitive gaps list
-    def generate_gaps_list():
-        if not gaps:
-            return "<p>No competitive gaps identified.</p>"
-        
-        gaps_html = []
-        for gap in gaps:
-            gaps_html.append(f'<li>{gap}</li>')
-        
-        return f'<ul>{"".join(gaps_html)}</ul>'
-    
-    # Main HTML template based on user's working format
-    html_content = f'''<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Chrome vs Edge — Competitive Intelligence Brief</title>
-  <style>
-:root{{--ink:#0f172a;--muted:#475569;--bg:#ffffff;--accent:#2563eb;--soft:#f1f5f9;--card:#f8fafc;}}
-*{{box-sizing:border-box}} body{{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg);margin:0;line-height:1.5}}
-header{{padding:28px 24px;border-bottom:1px solid #e2e8f0;background:#fff;position:sticky;top:0}}
-header h1{{margin:0 0 4px 0;font-size:20px}}
-header .meta{{color:var(--muted);font-size:12px}}
-main{{padding:24px;max-width:1200px;margin:0 auto}}
-section{{margin:28px 0;padding:16px;border:1px solid #e2e8f0;border-radius:12px;background:#fff}}
-h2{{margin:0 0 12px 0;font-size:18px}}
-p{{margin:0 0 12px 0}}
-ul{{margin:8px 0 8px 20px}}
-.badge{{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--soft);color:var(--muted);font-size:12px;margin-right:8px}}
-.table-wrap{{overflow:auto;border:1px solid #e2e8f0;border-radius:10px}}
-table{{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}}
-th,td{{padding:10px 12px;border-bottom:1px solid #e2e8f0;vertical-align:top}}
-thead th{{position:sticky;top:0;background:#f8fafc;text-align:left;font-weight:600}}
-tbody tr:hover{{background:#f9fbff}}
-.card{{padding:12px;border:1px solid #e2e8f0;border-radius:10px;margin:10px 0;background:var(--card)}}
-.card-head{{font-weight:600;margin-bottom:6px}}
-.card-quote{{color:var(--muted);font-style:italic;margin:6px 0}}
-.card-link a{{color:var(--accent);text-decoration:none}}
-.small{{font-size:12px;color:var(--muted)}}
-.mono{{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}}
-footer{{padding:24px;border-top:1px solid #e2e8f0;color:var(--muted);font-size:12px}}
-.evid-link{{white-space:nowrap}}
-@media print{{header{{position:static}} section{{page-break-inside:avoid}} a[href^="http"]::after{{content:" (" attr(href) ")";font-size:10px;color:#94a3b8}}}}
-</style>
-</head>
-<body>
-  <header>
-    <h1>Chrome vs Edge — Competitive Intelligence Brief</h1>
-    <div class="meta">Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')} · Audience: PM/Engineering · Status: Draft</div>
-  </header>
-  <main>
-    <section><h2>6) Executive Summary</h2><p>{executive_summary}</p></section>
-    <section><h2>1) Edge Competitive Gaps</h2>{generate_gaps_list()}</section>
-    <section><h2>2) Strategic Actions</h2>
-    {generate_strategic_actions_table()}
-    </section>
-    {generate_feature_parity_tables()}
-    <section><h2>4) UX Delta Teardown</h2>
-    {generate_ux_teardown_table()}
-    </section>
-    <section><h2>5) Edge Advantage Highlights</h2>{generate_edge_advantages()}</section>
-    <section><h2>7) Evidence Register</h2>
-    {generate_evidence_cards()}
-    </section>
-    <section><h2>8) Capability Term Harvest</h2>
-    {generate_capability_terms_table()}
-    </section>
-    <section><h2>10) Feature Inventory</h2>
-    {generate_feature_inventory_table()}
-    </section>
-  </main>
-  <footer>
-    <div>Built for rapid competitive readouts. Evidence IDs link to sources above.</div>
-  </footer>
-</body>
-</html>'''
-    
-    # Generate filename for consistency with other report functions
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"chrome_enterprise_competitive_report_{timestamp}.html"
-    
-    return filename, html_content
 
-def generate_capability_classification_html(capabilities):
-    """Generate HTML for capability term harvest classification"""
-    if not capabilities:
-        return "<p>No capability terms available.</p>"
-    
-    # Group capabilities by class
-    capability_classes = {}
-    for cap in capabilities:
-        class_name = cap.get('class', 'Unknown')
-        if class_name not in capability_classes:
-            capability_classes[class_name] = []
-        capability_classes[class_name].append(cap)
-    
-    html_sections = []
-    for class_name, class_caps in capability_classes.items():
-        html_sections.append(f"""
-        <div class="capability-class">
-            <h4 class="capability-class-title">{class_name}</h4>
-            <div class="capability-terms">
-        """)
-        
-        for cap in class_caps:
-            platforms = ', '.join(cap.get('platforms_in_sentence', ['Unknown']))
-            html_sections.append(f"""
-                <div class="capability-term">
-                    <strong>{cap.get('term', 'Unknown')}</strong>
-                    <span class="capability-platforms">({platforms})</span>
-                    <p class="capability-quote">"{cap.get('quote', 'No quote available')}"</p>
-                    <small class="capability-evidence">Evidence: {cap.get('evidence_id', 'N/A')}</small>
-                </div>
-            """)
-        
-        html_sections.append("</div></div>")
-    
-    return ''.join(html_sections)
 
-def generate_executive_summaries_html(summaries):
-    """Generate HTML for executive summaries"""
-    if not summaries:
-        return "<p>No executive summaries available.</p>"
-    
-    html = ""
-    for i, summary in enumerate(summaries, 1):
-        html += f"""
-        <div class="feature-card">
-            <div class="feature-name">Analysis {i}</div>
-            <p>{summary}</p>
-        </div>
-        """
-    return html
 
-def generate_gaps_html(gaps):
-    """Generate HTML for competitive gaps"""
-    if not gaps:
-        return "<p>No competitive gaps identified.</p>"
-    
-    html = ""
-    for gap in gaps:
-        html += f"""
-        <div class="gap-item">
-            <div class="gap-platform">Competitive Gap</div>
-            <p>{gap}</p>
-        </div>
-        """
-    return html
 
-def generate_evidence_cards_html(evidence_list):
-    """Generate HTML cards for evidence"""
-    if not evidence_list:
-        return "<p>No evidence data available.</p>"
-    
-    html = ""
-    for evidence in evidence_list:
-        product_class = evidence.get('product', '').lower()
-        platforms = evidence.get('platforms', [])
-        
-        platform_badges = ""
-        for platform in platforms:
-            platform_class = platform.lower()
-            platform_badges += f'<span class="platform-badge {platform_class}">{platform}</span>'
-        
-        html += f"""
-        <div class="evidence-card" data-product="{product_class}" data-platforms="{','.join([p.lower() for p in platforms])}">
-            <div class="evidence-id">{evidence.get('id', 'N/A')}</div>
-            <span class="evidence-product {product_class}">{evidence.get('product', 'Unknown')}</span>
-            <div class="evidence-feature">{evidence.get('feature', 'Unknown Feature')}</div>
-            <div class="evidence-quote">"{evidence.get('quote', 'No quote available')}"</div>
-            <div class="evidence-platforms">{platform_badges}</div>
-            <div style="margin-top: 10px; font-size: 0.8rem; color: #666;">
-                <a href="{evidence.get('url', '#')}" target="_blank">View Source</a>
-            </div>
-        </div>
-        """
-    return html
-
-def generate_detailed_gaps_html(gaps, capabilities):
-    """Generate detailed HTML for gap analysis"""
-    if not gaps:
-        return "<p>No competitive gaps identified.</p>"
-    
-    # Group gaps by platform and extract evidence
-    platform_gaps = {}
-    for gap in gaps:
-        # Extract platform from gap text
-        platform = "General"
-        gap_lower = gap.lower()
-        if "ios:" in gap_lower:
-            platform = "iOS"
-        elif "android:" in gap_lower:
-            platform = "Android"
-        elif "desktop:" in gap_lower:
-            platform = "Desktop"
-        
-        # Extract evidence ID if present
-        evidence_match = re.search(r'\[Evidence: (E\d+)\]', gap)
-        evidence_id = evidence_match.group(1) if evidence_match else None
-        
-        # Clean gap text (remove Evidence reference for display)
-        clean_gap = re.sub(r'\s*\[Evidence: E\d+\]', '', gap).strip()
-        
-        if platform not in platform_gaps:
-            platform_gaps[platform] = []
-        platform_gaps[platform].append({
-            'text': clean_gap,
-            'evidence_id': evidence_id,
-            'original': gap
-        })
-    
-    html = f"""
-    <div class="mb-8 text-center">
-        <div class="inline-block bg-red-100 border border-red-300 rounded-lg p-6">
-            <div class="text-4xl font-bold text-red-600">{len(gaps)}</div>
-            <div class="text-lg text-red-800 font-medium">Total Competitive Gaps</div>
-        </div>
-    </div>
-    """
-    
-    for platform, platform_gap_list in platform_gaps.items():
-        html += f"""
-        <div class="mb-8">
-            <h3 class="text-xl font-semibold text-ms-blue mb-4 pb-2 border-b-2 border-gray-200">{platform} Platform ({len(platform_gap_list)} gaps)</h3>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        """
-        
-        for i, gap_info in enumerate(platform_gap_list):
-            # Extract Chrome feature and Edge gap
-            if ' vs Chrome ' in gap_info['text']:
-                parts = gap_info['text'].split(' vs Chrome ', 1)
-                edge_gap = parts[0].replace(f"{platform}:", "").strip() if parts[0] else gap_info['text']
-                chrome_feature = parts[1] if len(parts) > 1 else "Chrome feature"
-            else:
-                edge_gap = gap_info['text']
-                chrome_feature = "Chrome advantage"
-            
-            evidence_badge = f"""<span class="bg-green-500 text-white text-xs px-2 py-1 rounded-full cursor-help" title="Evidence ID: {gap_info['evidence_id']}">📋 {gap_info['evidence_id']}</span>""" if gap_info['evidence_id'] else ""
-            
-            html += f"""
-                <div class="gap-card bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
-                    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <span class="bg-ms-blue text-white text-xs px-2 py-1 rounded-full font-bold">#{i+1}</span>
-                            <span class="bg-gray-600 text-white text-xs px-2 py-1 rounded font-medium">{platform}</span>
-                        </div>
-                        {evidence_badge}
-                    </div>
-                    <div class="p-4 space-y-4">
-                        <div>
-                            <strong class="text-red-600 text-sm font-semibold">Edge Gap:</strong>
-                            <p class="text-gray-700 text-sm mt-1 leading-relaxed">{edge_gap}</p>
-                        </div>
-                        <div>
-                            <strong class="text-green-600 text-sm font-semibold">Chrome Advantage:</strong>
-                            <p class="text-gray-700 text-sm mt-1 leading-relaxed">{chrome_feature}</p>
-                        </div>
-                    </div>
-                </div>
-            """
-        
-        html += """
-            </div>
-        </div>
-        """
-    
-    return html
-
-def generate_feature_cards_html(features):
-    """Generate HTML cards for features"""
-    if not features:
-        return "<p>No feature inventory available.</p>"
-    
-    html = ""
-    for feature in features:
-        platforms = feature.get('platforms_in_source', [])
-        platform_badges = ""
-        for platform in platforms:
-            platform_class = platform.lower()
-            platform_badges += f'<span class="platform-badge {platform_class}">{platform}</span>'
-        
-        html += f"""
-        <div class="feature-card">
-            <div class="feature-name">{feature.get('name', 'Unknown Feature')}</div>
-            <div class="feature-purpose">{feature.get('one_line_purpose', 'No description available')}</div>
-            <div class="feature-quote">"{feature.get('direct_quote_≤40w', 'No quote available')}"</div>
-            <div style="margin-top: 12px;">{platform_badges}</div>
-        </div>
-        """
-    return html
-
-def generate_raw_analysis_html(processed_posts):
-    """Generate HTML for raw analysis data"""
-    html = ""
-    for i, post in enumerate(processed_posts, 1):
-        html += f"""
-        <div class="post-card">
-            <h3>Post {i}: {post.get('title', 'Unknown Title')}</h3>
-            <p><strong>URL:</strong> <a href="{post.get('url', '#')}" target="_blank">{post.get('url', 'N/A')}</a></p>
-            <p><strong>Date:</strong> {post.get('publish_date', 'Unknown')}</p>
-            <p><strong>Author:</strong> {post.get('author', 'Unknown')}</p>
-            
-            <h4>AI Analysis</h4>
-            <div class="analysis-content">
-                <pre style="white-space: pre-wrap; font-family: inherit; font-size: 0.9rem;">{post.get('ai_analysis', 'No analysis available')}</pre>
-            </div>
-        </div>
-        """
-    return html
-
-def generate_strategic_actions_html(posts):
-    """Generate HTML for Strategic Actions table"""
-    html = ""
-    for post in posts:
-        data = post.get('structured_data', {})
-        strategic_actions = data.get('strategic_actions', [])
-        
-        if strategic_actions:
-            html += """
-            <div class="mb-8">
-                <div class="overflow-x-auto shadow-lg rounded-lg border border-gray-200">
-                    <table class="w-full text-sm text-left">
-                        <thead class="bg-gray-50 border-b-2 border-gray-200">
-                            <tr>
-                                <th class="px-6 py-4 font-semibold text-gray-900">Chrome Feature</th>
-                                <th class="px-6 py-4 font-semibold text-gray-900">Edge Action</th>
-                                <th class="px-6 py-4 font-semibold text-gray-900">Rationale</th>
-                                <th class="px-6 py-4 font-semibold text-gray-900">Evidence IDs</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-            """
-            
-            for action in strategic_actions:
-                feature = action.get('Chrome Feature', 'Unknown')
-                edge_action = action.get('Edge Action (Defend|Match|Leapfrog|Deprioritize)', 'Unknown')
-                rationale = action.get('Rationale (<=20 words)', action.get('Rationale (≤20 words)', 'No rationale provided'))
-                evidence_ids = action.get('Evidence IDs', '')
-                
-                # Color-code actions with Tailwind classes
-                action_lower = edge_action.lower()
-                if 'defend' in action_lower:
-                    action_class = "bg-blue-100 text-blue-800 border border-blue-200"
-                elif 'match' in action_lower:
-                    action_class = "bg-green-100 text-green-800 border border-green-200"
-                elif 'leapfrog' in action_lower:
-                    action_class = "bg-purple-100 text-purple-800 border border-purple-200"
-                elif 'deprioritize' in action_lower:
-                    action_class = "bg-red-100 text-red-800 border border-red-200"
-                else:
-                    action_class = "bg-gray-100 text-gray-800 border border-gray-200"
-                
-                html += f"""
-                        <tr class="hover:bg-gray-50 transition-colors duration-150">
-                            <td class="px-6 py-4 font-medium text-gray-900">{feature}</td>
-                            <td class="px-6 py-4">
-                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {action_class}">
-                                    {edge_action}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 text-gray-700">{rationale}</td>
-                            <td class="px-6 py-4 text-blue-600 font-mono text-xs">{evidence_ids}</td>
-                        </tr>
-                """
-            
-            html += """
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            """
-    
-    return html if html else '<div class="text-center py-8 text-gray-500">No strategic actions data available.</div>'
-
-def generate_ux_teardown_html(posts):
-    """Generate HTML for UX Delta Teardown visualization"""
-    html = ""
-    for post in posts:
-        data = post.get('structured_data', {})
-        ux_teardown = data.get('ux_delta_teardown', [])
-        
-        if ux_teardown:
-            html += """
-            <div class="mb-8">
-                <p class="text-gray-600 mb-6 text-center">Detailed comparison of user experience flows between Chrome and Edge</p>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            """
-            
-            for ux_item in ux_teardown:
-                feature = ux_item.get('Feature', 'Unknown Feature')
-                platform = ux_item.get('Platform', 'Unknown')
-                
-                # Platform-specific styling
-                platform_lower = platform.lower()
-                if 'ios' in platform_lower:
-                    platform_class = "bg-blue-100 text-blue-800"
-                elif 'android' in platform_lower:
-                    platform_class = "bg-green-100 text-green-800"
-                elif 'desktop' in platform_lower:
-                    platform_class = "bg-purple-100 text-purple-800"
-                else:
-                    platform_class = "bg-gray-100 text-gray-800"
-                
-                html += f"""
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-200">
-                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
-                        <div class="flex items-center justify-between">
-                            <h4 class="font-semibold text-gray-900 text-lg">{feature}</h4>
-                            <span class="px-3 py-1 text-xs font-medium rounded-full {platform_class}">{platform}</span>
-                        </div>
-                    </div>
-                    <div class="p-6 space-y-4">
-                        <div class="grid grid-cols-1 gap-3">
-                            <div class="flex items-start space-x-3">
-                                <span class="inline-flex items-center justify-center w-6 h-6 bg-blue-100 text-blue-600 rounded-full text-xs font-bold">1</span>
-                                <div class="flex-1">
-                                    <span class="text-sm font-medium text-gray-700">Entry Trigger:</span>
-                                    <p class="text-sm text-gray-600 mt-1">{ux_item.get('Entry Trigger', 'N/A')}</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start space-x-3">
-                                <span class="inline-flex items-center justify-center w-6 h-6 bg-green-100 text-green-600 rounded-full text-xs font-bold">2</span>
-                                <div class="flex-1">
-                                    <span class="text-sm font-medium text-gray-700">Block/Switch Mechanism:</span>
-                                    <p class="text-sm text-gray-600 mt-1">{ux_item.get('Block/Switch Mechanism', 'N/A')}</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start space-x-3">
-                                <span class="inline-flex items-center justify-center w-6 h-6 bg-yellow-100 text-yellow-600 rounded-full text-xs font-bold">3</span>
-                                <div class="flex-1">
-                                    <span class="text-sm font-medium text-gray-700">Data Boundary:</span>
-                                    <p class="text-sm text-gray-600 mt-1">{ux_item.get('Data/Account Boundary', 'N/A')}</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start space-x-3">
-                                <span class="inline-flex items-center justify-center w-6 h-6 bg-purple-100 text-purple-600 rounded-full text-xs font-bold">4</span>
-                                <div class="flex-1">
-                                    <span class="text-sm font-medium text-gray-700">Admin Controls:</span>
-                                    <p class="text-sm text-gray-600 mt-1">{ux_item.get('Admin/Policy Controls', 'N/A')}</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start space-x-3">
-                                <span class="inline-flex items-center justify-center w-6 h-6 bg-red-100 text-red-600 rounded-full text-xs font-bold">5</span>
-                                <div class="flex-1">
-                                    <span class="text-sm font-medium text-gray-700">Recovery Path:</span>
-                                    <p class="text-sm text-gray-600 mt-1">{ux_item.get('Recovery Path', 'N/A')}</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="border-t border-gray-200 pt-4 space-y-3">
-                            <div class="bg-gray-50 rounded-lg p-3">
-                                <span class="text-sm font-medium text-gray-700">Notes:</span>
-                                <p class="text-sm text-gray-600 mt-1">{ux_item.get('Notes', 'No additional notes')}</p>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-sm font-medium text-gray-700">Evidence:</span>
-                                <span class="text-xs font-mono bg-blue-50 text-blue-700 px-2 py-1 rounded">{ux_item.get('Evidence IDs', 'N/A')}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                """
-            
-            html += """
-                </div>
-            </div>
-            """
-    
-    return html if html else '<div class="text-center py-8 text-gray-500">No UX teardown data available.</div>'
-
-def generate_problem_solution_html(posts):
-    """Generate HTML for Problem-Solution Map"""
-    html = ""
-    for post in posts:
-        data = post.get('structured_data', {})
-        problem_solution = data.get('problem_solution_map', [])
-        
-        if problem_solution:
-            # Group by category
-            categories = {}
-            for item in problem_solution:
-                category = item.get('Category', 'Other')
-                if category not in categories:
-                    categories[category] = []
-                categories[category].append(item)
-            
-            html += """
-            <div class="mb-8">
-                <p class="text-gray-600 mb-6 text-center">Chrome's strategic positioning and problem-solving approach</p>
-            """
-            
-            for category, items in categories.items():
-                html += f"""
-                <div class="mb-8">
-                    <h4 class="text-xl font-semibold text-gray-900 mb-4 pb-2 border-b-2 border-gray-200">{category}</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                """
-                
-                for item in items:
-                    html += f"""
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-200">
-                        <div class="bg-gradient-to-r from-orange-50 to-red-50 px-6 py-4 border-b border-gray-200">
-                            <h5 class="font-semibold text-gray-900 text-lg">{item.get('Problem', 'Unknown Problem')}</h5>
-                        </div>
-                        <div class="p-6 space-y-4">
-                            <div class="space-y-3">
-                                <div class="bg-green-50 rounded-lg p-3">
-                                    <span class="text-sm font-medium text-green-800">Chrome Solution:</span>
-                                    <p class="text-sm text-green-700 mt-1">{item.get('Chrome Feature', 'N/A')}</p>
-                                </div>
-                                <div class="bg-red-50 rounded-lg p-3">
-                                    <span class="text-sm font-medium text-red-800">Pain Point:</span>
-                                    <p class="text-sm text-red-700 mt-1">{item.get('Pain Point Addressed', 'N/A')}</p>
-                                </div>
-                                <div class="bg-blue-50 rounded-lg p-3">
-                                    <span class="text-sm font-medium text-blue-800">Value Proposition:</span>
-                                    <p class="text-sm text-blue-700 mt-1">{item.get('Value Proposition', 'N/A')}</p>
-                                </div>
-                            </div>
-                            <div class="border-t border-gray-200 pt-3 flex items-center justify-between">
-                                <span class="text-sm font-medium text-gray-700">Evidence:</span>
-                                <span class="text-xs font-mono bg-blue-50 text-blue-700 px-2 py-1 rounded">{item.get('Evidence IDs', 'N/A')}</span>
-                            </div>
-                        </div>
-                    </div>
-                    """
-                
-                html += """
-                    </div>
-                </div>
-                """
-            
-            html += "</div>"
-    
-    return html if html else '<div class="text-center py-8 text-gray-500">No problem-solution mapping data available.</div>'
-
-def generate_feature_parity_html(posts):
-    """Generate HTML for enhanced Feature Parity Chart"""
-    html = ""
-    for post in posts:
-        data = post.get('structured_data', {})
-        parity_chart = data.get('feature_parity_chart', {})
-        
-        if parity_chart:
-            html += """
-            <div class="mb-8">
-                <div class="flex flex-wrap justify-center gap-2 mb-6">
-            """
-            
-            # Create platform tabs
-            platforms = ['iOS', 'Android', 'Desktop']
-            for i, platform in enumerate(platforms):
-                if platform in parity_chart:
-                    active_class = "bg-blue-600 text-white active" if i == 0 else "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    html += f"""
-                    <button class="parity-tab px-4 py-2 rounded-lg font-medium transition-colors duration-200 {active_class}" onclick="showParityPlatform('{platform.lower()}')" id="tab-{platform.lower()}">{platform}</button>
-                    """
-            
-            html += "</div>"
-            
-            # Create platform content
-            for i, platform in enumerate(platforms):
-                if platform in parity_chart:
-                    active_class = "active" if i == 0 else ""
-                    platform_data = parity_chart[platform]
-                    
-                    html += f"""
-                    <div id="parity-{platform.lower()}" class="parity-platform-content {active_class}">
-                        <h5 class="text-xl font-semibold text-gray-900 mb-4 text-center">{platform} Feature Parity</h5>
-                        <div class="overflow-x-auto shadow-lg rounded-lg border border-gray-200">
-                            <table class="min-w-full text-xs table-fixed">
-                                <thead class="bg-gray-50 border-b-2 border-gray-200">
-                                    <tr>
-                                        <th class="px-2 py-2 font-semibold text-gray-900 text-xs w-32">Chrome Feature</th>
-                                        <th class="px-2 py-2 font-semibold text-gray-900 text-xs w-20">Chr DeliveryMode</th>
-                                        <th class="px-2 py-2 font-semibold text-gray-900 text-xs w-20">Chr AdminPlane</th>
-                                        <th class="px-2 py-2 font-semibold text-gray-900 text-xs w-16">Chr Granularity</th>
-                                        <th class="px-2 py-2 font-semibold text-gray-900 text-xs w-16">Chr Redirect</th>
-                                        <th class="px-2 py-2 font-semibold text-gray-900 text-xs w-32">Edge Capability</th>
-                                        <th class="px-2 py-2 font-semibold text-gray-900 text-xs w-20">Edge DeliveryMode</th>
-                                        <th class="px-2 py-2 font-semibold text-gray-900 text-xs w-20">Edge AdminPlane</th>
-                                        <th class="px-2 py-2 font-semibold text-gray-900 text-xs w-16">Edge Granularity</th>
-                                        <th class="px-2 py-2 font-semibold text-gray-900 text-xs w-16">Edge Redirect</th>
-                                        <th class="px-2 py-2 font-semibold text-gray-900 text-xs w-48">Delta & Rationale</th>
-                                        <th class="px-2 py-2 font-semibold text-gray-900 text-xs w-20">Parity Rating</th>
-                                        <th class="px-2 py-2 font-semibold text-gray-900 text-xs w-16">Evidence</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                    """
-                    
-                    for feature in platform_data:
-                        parity_rating = feature.get('Parity Rating', 'Unknown')
-                        # Color-code parity ratings
-                        parity_lower = parity_rating.lower()
-                        if 'full' in parity_lower or 'complete' in parity_lower:
-                            parity_class = "bg-green-100 text-green-800 border border-green-200"
-                        elif 'partial' in parity_lower or 'limited' in parity_lower:
-                            parity_class = "bg-yellow-100 text-yellow-800 border border-yellow-200"
-                        elif 'none' in parity_lower or 'missing' in parity_lower:
-                            parity_class = "bg-red-100 text-red-800 border border-red-200"
-                        else:
-                            parity_class = "bg-gray-100 text-gray-800 border border-gray-200"
-                        
-                        html += f"""
-                                    <tr class="hover:bg-gray-50 transition-colors duration-150">
-                                        <td class="px-2 py-2 font-medium text-gray-900 text-xs w-32 break-words">{feature.get('Chrome Feature', 'N/A')}</td>
-                                        <td class="px-2 py-2 text-gray-700 text-xs w-20 break-words">{feature.get('Chrome DeliveryMode', 'N/A')}</td>
-                                        <td class="px-2 py-2 text-gray-700 text-xs w-20 break-words">{feature.get('Chrome AdminPlane', 'N/A')}</td>
-                                        <td class="px-2 py-2 text-gray-700 text-xs w-16 break-words">{feature.get('Chrome Granularity', 'N/A')}</td>
-                                        <td class="px-2 py-2 text-gray-700 text-xs w-16 break-words">{feature.get('Chrome RedirectSupport', 'N/A')}</td>
-                                        <td class="px-2 py-2 text-gray-700 text-xs w-32 break-words">{feature.get('Edge Capability', 'N/A')}</td>
-                                        <td class="px-2 py-2 text-gray-700 text-xs w-20 break-words">{feature.get('Edge DeliveryMode', 'N/A')}</td>
-                                        <td class="px-2 py-2 text-gray-700 text-xs w-20 break-words">{feature.get('Edge AdminPlane', 'N/A')}</td>
-                                        <td class="px-2 py-2 text-gray-700 text-xs w-16 break-words">{feature.get('Edge Granularity', 'N/A')}</td>
-                                        <td class="px-2 py-2 text-gray-700 text-xs w-16 break-words">{feature.get('Edge RedirectSupport', 'N/A')}</td>
-                                        <td class="px-2 py-2 text-gray-700 text-xs w-48 break-words leading-tight">{feature.get('Delta & Rationale', 'N/A')}</td>
-                                        <td class="px-2 py-2 w-20">
-                                            <span class="inline-flex px-1 py-1 text-xs font-semibold rounded {parity_class}">
-                                                {parity_rating}
-                                            </span>
-                                        </td>
-                                        <td class="px-2 py-2 text-blue-600 font-mono text-xs w-16 break-words">{feature.get('Evidence IDs', 'N/A')}</td>
-                                    </tr>
-                        """
-                    
-                    html += """
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    """
-            
-            html += "</div>"
-    
-    return html if html else '<div class="text-center py-8 text-gray-500">No feature parity data available.</div>'
 
 def get_enhanced_competitive_js():
     """Return JavaScript for enhanced competitive intelligence features"""
@@ -2641,145 +1931,7 @@ def get_enhanced_competitive_js():
         });
     """
 
-def create_professional_html_report(processed_posts, report_id, timestamp, report_date):
-    """
-    Create the actual HTML content for the report (enhanced version)
-    
-    Args:
-        processed_posts (list): Posts with structured data
-        report_id (str): Report identifier
-        timestamp (str): Human-readable timestamp
-        report_date (str): Date in YYYY-MM-DD format
-        
-    Returns:
-        str: Complete HTML content
-    """
-    # Check if we have competitive intelligence data
-    has_competitive_data = any(
-        post.get('structured_data') and 
-        (post['structured_data'].get('evidence_register') or 
-         post['structured_data'].get('feature_inventory'))
-        for post in processed_posts
-    )
-    
-    # Debug: Print which function will be called
-    print(f"📊 Report type decision: {'Enhanced' if has_competitive_data else 'Legacy'}")
-    if processed_posts and processed_posts[0].get('structured_data'):
-        data = processed_posts[0]['structured_data']
-        print(f"   Evidence register items: {len(data.get('evidence_register', []))}")
-        print(f"   Feature inventory items: {len(data.get('feature_inventory', []))}")
-    
-    if has_competitive_data:
-        print("✅ Using Markdown report generation")
-        # Import the markdown generation function
-        try:
-            from generate_report_from_input import create_competitive_intelligence_markdown
-            # Create systematic parsing data format
-            parsed_data = {
-                'executive_summary': processed_posts[0].get('structured_data', {}).get('executive_summary', ''),
-                'edge_competitive_gaps': processed_posts[0].get('structured_data', {}).get('edge_competitive_gaps', []),
-                'strategic_actions': processed_posts[0].get('structured_data', {}).get('strategic_actions', []),
-                'feature_parity_analysis': processed_posts[0].get('structured_data', {}).get('feature_parity_chart', {}),
-                'ux_competitive_analysis': processed_posts[0].get('structured_data', {}).get('ux_delta_teardown', []),
-                'edge_advantages': processed_posts[0].get('structured_data', {}).get('edge_advantage_highlights', []),
-                'evidence_base': processed_posts[0].get('structured_data', {}).get('evidence_register', []),
-                'capability_term_harvest': processed_posts[0].get('structured_data', {}).get('capability_term_harvest', []),
-                'diff_matrix': processed_posts[0].get('structured_data', {}).get('diff_matrix', []),
-                'feature_inventory': processed_posts[0].get('structured_data', {}).get('feature_inventory', []),
-                'problem_solution_map': processed_posts[0].get('structured_data', {}).get('problem_solution_map', [])
-            }
-            
-            markdown_content = create_competitive_intelligence_markdown(parsed_data)
-            
-            # Generate filename
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"competitive_intelligence_markdown_{timestamp}.md"
-            
-            return filename, markdown_content
-            
-        except ImportError as e:
-            print(f"⚠️ Markdown generation not available: {e}")
-            print("⚠️ Falling back to legacy HTML report")
-            return create_legacy_html_report(processed_posts, report_id, timestamp, report_date)
-    else:
-        print("⚠️ Using create_legacy_html_report")
-        return create_legacy_html_report(processed_posts, report_id, timestamp, report_date)
 
-def create_legacy_html_report(processed_posts, report_id, timestamp, report_date):
-    """
-    Create legacy HTML content for non-competitive intelligence data
-    """
-    # Count successful analyses
-    successful_posts = [p for p in processed_posts if p['structured_data']]
-    failed_posts = [p for p in processed_posts if not p['structured_data']]
-    
-    # Generate executive overview
-    executive_overview = generate_executive_overview(successful_posts)
-    
-    # Start building HTML
-    html_content = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chrome Enterprise Intelligence Report - {report_date}</title>
-    <style>
-        {get_enhanced_competitive_css()}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header class="report-header">
-            <div class="header-content">
-                <h1>🔍 Microsoft Edge Competitive Intelligence</h1>
-                <p class="subtitle">Chrome Enterprise Blog Monitoring Report</p>
-                <div class="report-meta">
-                    <span class="report-id">Report ID: {report_id}</span>
-                    <span class="report-date">Generated: {timestamp}</span>
-                </div>
-            </div>
-        </header>
-
-        <section class="executive-summary">
-            <h2>📊 Executive Summary</h2>
-            <div class="summary-stats">
-                <div class="stat-card">
-                    <div class="stat-number">{len(successful_posts)}</div>
-                    <div class="stat-label">Posts Analyzed</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">{len([p for p in successful_posts if p['structured_data'] and p['structured_data'].get('priority_level') == 'High'])}</div>
-                    <div class="stat-label">High Priority</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">{len(failed_posts)}</div>
-                    <div class="stat-label">Analysis Failures</div>
-                </div>
-            </div>
-            {executive_overview}
-        </section>
-
-        <section class="detailed-analysis">
-            <h2>📰 Detailed Analysis</h2>
-            {generate_detailed_posts_html(successful_posts)}
-        </section>
-
-        {generate_failure_section_html(failed_posts) if failed_posts else ''}
-
-        <footer class="report-footer">
-            <p>Generated by Microsoft Edge Competitive Intelligence System</p>
-            <p>Automated Chrome Enterprise Blog Monitoring | {timestamp}</p>
-            <p><small>Report ID: {report_id} | Source: Google Cloud Chrome Enterprise Blog</small></p>
-        </footer>
-    </div>
-
-    <script>
-        {get_interactive_js()}
-    </script>
-</body>
-</html>"""
-    
-    return html_content
 
 def generate_executive_overview(successful_posts):
     """Generate executive overview section from structured data"""
@@ -2822,60 +1974,6 @@ def generate_executive_overview(successful_posts):
     
     return overview_html
 
-def generate_detailed_posts_html(successful_posts):
-    """Generate detailed analysis section for each post"""
-    if not successful_posts:
-        return "<p>No successful analyses to display.</p>"
-    
-    posts_html = ""
-    
-    for post in successful_posts:
-        data = post.get('structured_data', {})
-        if not data:
-            continue
-            
-        priority_class = f"priority-{data.get('priority_level', 'medium').lower()}"
-        
-        posts_html += f"""
-        <article class="post-analysis {priority_class}">
-            <header class="post-header">
-                <h3 class="post-title">
-                    <span class="post-number">#{post['post_number']}</span>
-                    {post['title']}
-                    <span class="priority-badge priority-{data.get('priority_level', 'medium').lower()}">{data.get('priority_level', 'Medium')}</span>
-                </h3>
-                <div class="post-meta">
-                    <span><strong>Author:</strong> {post['author']}</span>
-                    <span><strong>Published:</strong> {post['publish_date']}</span>
-                    <span><strong>URL:</strong> <a href="{post['url']}" target="_blank">View Original</a></span>
-                </div>
-            </header>
-            
-            <div class="analysis-content">
-                <section class="executive-summary-section">
-                    <h4>📋 Executive Summary</h4>
-                    <p>{data.get('executive_summary', 'No summary available')}</p>
-                </section>
-                
-                {"<section class='technologies-section'><h4>🔧 Key Technologies</h4>" + generate_technologies_table(data.get('key_technologies', [])) + "</section>" if data.get('key_technologies') else ""}
-                
-                <section class="impact-section">
-                    <h4>💼 Business Impact</h4>
-                    <p>{data.get('business_impact', 'No business impact analysis available')}</p>
-                </section>
-                
-                {"<section class='threats-section'><h4>🚨 Competitive Threats</h4><ul>" + "".join([f"<li>{threat}</li>" for threat in data.get('competitive_threats', [])]) + "</ul></section>" if data.get('competitive_threats') else ""}
-                
-                {"<section class='opportunities-section'><h4>💡 Opportunities</h4><ul>" + "".join([f"<li>{opp}</li>" for opp in data.get('opportunities', [])]) + "</ul></section>" if data.get('opportunities') else ""}
-                
-                {"<section class='recommendations-section'><h4>📝 Recommendations</h4><ul>" + "".join([f"<li>{rec}</li>" for rec in data.get('recommendations', [])]) + "</ul></section>" if data.get('recommendations') else ""}
-                
-                {"<section class='metrics-section'><h4>📊 Key Metrics</h4>" + generate_metrics_table(data.get('key_metrics', [])) + "</section>" if data.get('key_metrics') else ""}
-            </div>
-        </article>
-        """
-    
-    return posts_html
 
 def generate_technologies_table(technologies):
     """Generate HTML table for technologies"""
@@ -2935,29 +2033,6 @@ def generate_metrics_table(metrics):
     table_html += "</tbody></table>"
     return table_html
 
-def generate_failure_section_html(failed_posts):
-    """Generate section for failed analyses"""
-    if not failed_posts:
-        return ""
-    
-    failure_html = """
-    <section class="analysis-failures">
-        <h2>⚠️ Analysis Failures</h2>
-        <p>The following posts could not be processed for structured analysis:</p>
-        <ul class="failure-list">
-    """
-    
-    for post in failed_posts:
-        failure_html += f"""
-            <li>
-                <strong>{post['title']}</strong>
-                <span class="failure-meta">Author: {post['author']} | <a href="{post['url']}" target="_blank">View Original</a></span>
-                <p class="raw-analysis">{post.get('ai_analysis', 'No analysis available')[:200]}...</p>
-            </li>
-        """
-    
-    failure_html += "</ul></section>"
-    return failure_html
 
 def get_professional_css():
     """Return professional CSS styling for HTML reports"""
@@ -4223,89 +3298,6 @@ def get_interactive_js():
         });
     """
 
-def sanitize_html_content(content):
-    """
-    Sanitize HTML content to prevent XSS and ensure safety
-    
-    Args:
-        content (str): Raw HTML content
-        
-    Returns:
-        str: Sanitized HTML content
-    """
-    if not content:
-        return ""
-    
-    import html
-    import re
-    
-    # Basic HTML escaping for any user-generated content
-    # Since our content comes from AI, we need to be careful
-    
-    # Escape any potential script tags
-    content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.IGNORECASE | re.DOTALL)
-    
-    # Remove any javascript: URLs
-    content = re.sub(r'javascript:', '', content, flags=re.IGNORECASE)
-    
-    # Remove any on* event handlers
-    content = re.sub(r'\s+on\w+\s*=\s*["\'][^"\']*["\']', '', content, flags=re.IGNORECASE)
-    
-    # Escape any potentially dangerous characters in text content
-    # but preserve our generated HTML structure
-    
-    return content
-
-def validate_html_structure(html_content):
-    """
-    Validate HTML structure and ensure it's well-formed
-    
-    Args:
-        html_content (str): HTML content to validate
-        
-    Returns:
-        tuple: (is_valid, error_message)
-    """
-    if not html_content:
-        return False, "Empty HTML content"
-    
-    try:
-        from bs4 import BeautifulSoup
-        
-        # Parse with BeautifulSoup to check for well-formed HTML
-        soup = BeautifulSoup(html_content, 'html.parser')
-        
-        # Check for required elements
-        required_elements = ['html', 'head', 'body', 'title']
-        for element in required_elements:
-            if not soup.find(element):
-                return False, f"Missing required element: {element}"
-        
-        # Check for basic structure
-        # Note: Enhanced reports use different structure with Tailwind CSS
-        if soup.find('div', class_='container') or soup.find('div', class_='max-w-7xl'):
-            # Valid structure found
-            pass
-        else:
-            return False, "Missing main container element"
-        
-        # Check for CSS (either inline styles or Tailwind CDN)
-        has_css = (soup.find('style') or 
-                  soup.find('script', src=lambda x: x and 'tailwindcss' in x))
-        if not has_css:
-            return False, "Missing CSS styling"
-        
-        # Check for JavaScript functionality
-        has_js = (soup.find('script', string=lambda x: x and ('showTab' in x or 'function' in x)) or
-                 soup.find('script') and len(soup.find_all('script')) > 1)
-        if not has_js:
-            return False, "Missing JavaScript functionality"
-        
-        return True, "HTML structure is valid"
-        
-    except Exception as e:
-        return False, f"HTML parsing error: {str(e)}"
-
 def validate_report_data(processed_posts):
     """
     Validate that report data is complete and properly structured
@@ -4356,13 +3348,13 @@ def validate_report_data(processed_posts):
     
     return True, warnings
 
-def save_html_report_to_file(filename, html_content, reports_dir="reports"):
+def save_markdown_report_to_file(filename, markdown_content, reports_dir="reports"):
     """
-    Save HTML report to file system with proper error handling
+    Save Markdown report to file system with proper error handling
     
     Args:
         filename (str): Name of the file to save
-        html_content (str): HTML content to save
+        markdown_content (str): Markdown content to save
         reports_dir (str): Directory to save reports in
         
     Returns:
@@ -4377,13 +3369,12 @@ def save_html_report_to_file(filename, html_content, reports_dir="reports"):
         # Create full file path
         file_path = os.path.join(reports_dir, filename)
         
-        # Validate HTML before saving
-        is_valid, validation_error = validate_html_structure(html_content)
-        if not is_valid:
-            return False, None, f"HTML validation failed: {validation_error}"
-        
-        # Sanitize content before saving
-        sanitized_content = sanitize_html_content(html_content)
+        # Ensure we're only processing Markdown files
+        if not filename.endswith('.md'):
+            return False, None, f"Invalid file type: Only .md files are supported, got {filename}"
+            
+        # For Markdown files, save as-is
+        sanitized_content = markdown_content
         
         # Write file
         with open(file_path, 'w', encoding='utf-8') as f:
@@ -4452,13 +3443,19 @@ def create_concise_email_content(analyzed_posts, report_url, notification_type="
     else:
         subject = f"📊 Chrome Enterprise Intelligence: {len(analyzed_posts)} New Posts"
     
+    # Create executive summaries outside f-string to avoid backslash issues
+    executive_summaries = '\n'.join([
+        f"• {post.get('title', 'Unknown')[:60]}...\n  → {post.get('email_summary', 'No summary available')}"
+        for post in analyzed_posts
+    ])
+    
     # Plain text email content
     text_content = f"""🚨 CHROME ENTERPRISE INTELLIGENCE ALERT
 
 📊 {len(analyzed_posts)} New Posts Detected | {timestamp}
 
 EXECUTIVE SUMMARIES:
-{''.join([f"• {post.get('title', 'Unknown')[:60]}...\n  → {post.get('email_summary', 'No summary available')}\n" for post in analyzed_posts])}
+{executive_summaries}
 
 🔔 KEY HIGHLIGHTS:
 {key_highlights}
@@ -4814,12 +3811,12 @@ def send_enhanced_email(subject, html_body, text_body, recipient_email, sender_e
         print(f"❌ Email sending failed: {str(e)}")
         return False
 
-def publish_report_and_get_url(html_file_path, report_id):
+def publish_report_and_get_url(markdown_file_path, report_id):
     """
-    Publish HTML report and return the public URL
+    Publish Markdown report and return the public URL
     
     Args:
-        html_file_path (str): Path to the HTML report file
+        markdown_file_path (str): Path to the Markdown report file
         report_id (str): Unique report identifier
         
     Returns:
@@ -4838,19 +3835,19 @@ def publish_report_and_get_url(html_file_path, report_id):
         github_config = get_github_config()
         if not github_config:
             # Fallback: return local file URL
-            local_url = f"file://{os.path.abspath(html_file_path)}"
+            local_url = f"file://{os.path.abspath(markdown_file_path)}"
             print(f"⚠️ GitHub Pages not configured, using local URL: {local_url}")
             return True, local_url, "GitHub Pages not configured - using local file"
         
         # Set up GitHub Pages repository
         setup_success = setup_github_pages_repo(github_config)
         if not setup_success:
-            local_url = f"file://{os.path.abspath(html_file_path)}"
+            local_url = f"file://{os.path.abspath(markdown_file_path)}"
             return False, local_url, "Failed to set up GitHub Pages repository"
         
         # Publish report
         success, report_url, error = publish_report_to_github_pages(
-            html_file_path, report_id, github_config
+            markdown_file_path, report_id, github_config
         )
         
         if success:
@@ -4858,22 +3855,22 @@ def publish_report_and_get_url(html_file_path, report_id):
             return True, report_url, None
         else:
             # Fallback to local URL
-            local_url = f"file://{os.path.abspath(html_file_path)}"
+            local_url = f"file://{os.path.abspath(markdown_file_path)}"
             print(f"⚠️ GitHub Pages publishing failed, using local URL: {local_url}")
             return False, local_url, error
         
     except ImportError:
         # report_publisher.py not available
-        local_url = f"file://{os.path.abspath(html_file_path)}"
+        local_url = f"file://{os.path.abspath(markdown_file_path)}"
         print(f"⚠️ Report publisher not available, using local URL: {local_url}")
         return True, local_url, "Report publisher module not available"
     except Exception as e:
-        error_logger.log_error(e, "publish_report_and_get_url", {"html_file_path": html_file_path, "report_id": report_id})
+        error_logger.log_error(e, "publish_report_and_get_url", {"markdown_file_path": markdown_file_path, "report_id": report_id})
         print(f"⚠️ Publishing error: {e}")
         print("🔄 Using GitHub publishing fallback...")
         
         # Use GitHub publishing fallback strategy
-        success, fallback_url, fallback_message = FallbackStrategies.github_publishing_fallback(html_file_path, report_id, e)
+        success, fallback_url, fallback_message = FallbackStrategies.github_publishing_fallback(markdown_file_path, report_id, e)
         return success, fallback_url, fallback_message
 
 def get_ai_analysis_prompt(custom_prompt=None):
@@ -5302,214 +4299,6 @@ def send_enhanced_email(subject, html_body, text_body, recipient_email, sender_e
     except Exception as e:
         print(f"✗ Email sending failed: {e}")
         return False
-
-def convert_analysis_to_html(analysis_text):
-    """
-    Convert AI analysis text with markdown-style formatting to proper HTML
-    
-    Args:
-        analysis_text (str): Analysis text with markdown tables and formatting
-        
-    Returns:
-        str: HTML formatted analysis with proper tables and styling
-    """
-    if not analysis_text:
-        return ""
-    
-    import re
-    
-    lines = analysis_text.split('\n')
-    html_parts = []
-    i = 0
-    max_iterations = len(lines) * 2  # Safety mechanism to prevent infinite loops
-    iteration_count = 0
-    
-    while i < len(lines) and iteration_count < max_iterations:
-        iteration_count += 1
-        line = lines[i].strip()
-        
-        if not line:
-            html_parts.append('<br>')
-            i += 1
-            continue
-        
-        # Handle markdown-style headers (# ## ### etc.)
-        if line.startswith('#'):
-            # Count the number of # symbols to determine header level
-            hash_count = 0
-            for char in line:
-                if char == '#':
-                    hash_count += 1
-                else:
-                    break
-            
-            # Extract header text (remove # symbols and strip whitespace)
-            header_text = line[hash_count:].strip()
-            
-            # Convert to appropriate HTML header (limit to h1-h6)
-            header_level = min(hash_count, 6)
-            html_parts.append(f'<h{header_level}>{header_text}</h{header_level}>')
-            i += 1
-            continue
-        
-        # Handle numbered lists first (consecutive numbered items)
-        if re.match(r'^\d+\.\s+', line):
-            # Check if this is part of a numbered list (look ahead)
-            is_numbered_list = False
-            if i + 1 < len(lines):
-                next_line = lines[i + 1].strip()
-                if re.match(r'^\d+\.\s+', next_line) or not next_line:
-                    is_numbered_list = True
-            
-            if is_numbered_list:
-                numbered_lines = []
-                
-                # Collect consecutive numbered items
-                while i < len(lines):
-                    current_line = lines[i].strip()
-                    if re.match(r'^\d+\.\s+', current_line):
-                        # Clean up numbered item
-                        clean_line = re.sub(r'^\d+\.\s+', '', current_line)
-                        numbered_lines.append(clean_line)
-                        i += 1
-                    elif not current_line:  # Empty line continues the list
-                        i += 1
-                    else:
-                        break
-                
-                if numbered_lines:
-                    html_parts.append('<ol>')
-                    for item in numbered_lines:
-                        html_parts.append(f'<li>{item}</li>')
-                    html_parts.append('</ol>')
-                continue
-            else:
-                # Single numbered item - treat as header
-                header_text = re.sub(r'^\d+\.\s+', '', line)
-                html_parts.append(f'<h3>{header_text}</h3>')
-                i += 1
-                continue
-            
-        # Handle **Header** style headers
-        if line.startswith('**') and line.endswith('**'):
-            header_text = line.strip('*').strip()
-            html_parts.append(f'<h3>{header_text}</h3>')
-            i += 1
-            continue
-        
-        # Handle table detection (lines with | separators)
-        if '|' in line or '│' in line:
-            # Start of a table
-            table_lines = []
-            
-            # Collect all table lines
-            while i < len(lines):
-                current_line = lines[i].strip()
-                if '|' in current_line or '│' in current_line:
-                    # Convert | to │ for consistency
-                    current_line = current_line.replace('|', '│')
-                    table_lines.append(current_line)
-                    i += 1
-                else:
-                    break
-            
-            # Convert table to HTML
-            if table_lines:
-                html_table = convert_table_to_html(table_lines)
-                html_parts.append(html_table)
-            continue
-        
-        # Handle bullet points
-        if line.startswith('•') or line.startswith('-') or line.startswith('*'):
-            bullet_lines = []
-            
-            # Collect consecutive bullet points
-            while i < len(lines):
-                current_line = lines[i].strip()
-                if current_line.startswith('•') or current_line.startswith('-') or current_line.startswith('*'):
-                    # Clean up bullet point
-                    clean_line = re.sub(r'^[•\-\*]\s*', '', current_line)
-                    bullet_lines.append(clean_line)
-                    i += 1
-                elif not current_line:  # Empty line continues the list
-                    i += 1
-                else:
-                    break
-            
-            if bullet_lines:
-                html_parts.append('<ul>')
-                for bullet in bullet_lines:
-                    html_parts.append(f'<li>{bullet}</li>')
-                html_parts.append('</ul>')
-            continue
-        
-        # Regular paragraph
-        if line:
-            # Handle bold text **text**
-            line = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', line)
-            # Handle links [text](url) - basic implementation
-            line = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2" target="_blank">\1</a>', line)
-            html_parts.append(f'<p>{line}</p>')
-        
-        i += 1
-    
-    # Safety check for infinite loops
-    if iteration_count >= max_iterations:
-        print(f"⚠️ Warning: HTML conversion reached iteration limit ({max_iterations}), may have truncated content")
-        html_parts.append('<p><em>[Content may be truncated due to processing limits]</em></p>')
-    
-    return '\n'.join(html_parts)
-
-def convert_table_to_html(table_lines):
-    """
-    Convert markdown-style table lines to HTML table
-    
-    Args:
-        table_lines (list): List of table row strings with │ separators
-        
-    Returns:
-        str: HTML table
-    """
-    if not table_lines:
-        return ""
-    
-    html_parts = ['<table>']
-    
-    for i, line in enumerate(table_lines):
-        if not line.strip():
-            continue
-            
-        # Split by │ and clean up cells
-        cells = [cell.strip() for cell in line.split('│') if cell.strip()]
-        
-        if not cells:
-            continue
-        
-        # Skip separator lines (lines with mostly dashes)
-        if all(cell.replace('-', '').replace(':', '').strip() == '' for cell in cells):
-            continue
-        
-        # First non-separator line is header
-        if i == 0 or (i == 1 and all(cell.replace('-', '').replace(':', '').strip() == '' for cell in table_lines[0].split('│'))):
-            html_parts.append('<thead><tr>')
-            for cell in cells:
-                # Handle bold text in headers
-                cell = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', cell)
-                html_parts.append(f'<th>{cell}</th>')
-            html_parts.append('</tr></thead><tbody>')
-        else:
-            html_parts.append('<tr>')
-            for j, cell in enumerate(cells):
-                # Handle bold text and links in cells
-                cell = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', cell)
-                cell = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2" target="_blank">\1</a>', cell)
-                
-                html_parts.append(f'<td>{cell}</td>')
-            html_parts.append('</tr>')
-    
-    html_parts.append('</tbody></table>')
-    
-    return '\n'.join(html_parts)
 
 def create_email_content(analyzed_posts, notification_type="new_posts"):
     """
