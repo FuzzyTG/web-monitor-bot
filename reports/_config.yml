@@ -1,0 +1,19 @@
+# GitHub Pages Jekyll Configuration
+title: "Microsoft Edge Competitive Intelligence"
+description: "Automated competitive analysis reports"
+
+# Enable Markdown processing
+markdown: kramdown
+highlighter: rouge
+
+# Include Markdown files in processing
+include:
+  - "*.md"
+
+# Theme (optional)
+theme: minima
+
+# Plugins
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
