@@ -1,3 +1,9 @@
+---
+title: "Chrome vs Edge — Competitive Intelligence Brief"
+date: 2025-08-21
+layout: default
+---
+
 # Chrome vs Edge — Competitive Intelligence Brief
 
 **Generated:** August 21, 2025 at 02:05 PM • **Audience:** PM/Engineering • **Status:** Draft

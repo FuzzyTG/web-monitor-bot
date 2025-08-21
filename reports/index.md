@@ -10,8 +10,7 @@ Welcome to the automated competitive intelligence monitoring system for Microsof
 
 ## Available Reports
 
-- [Chrome Enterprise Report - August 19, 2025 20:23](./chrome_enterprise_report_20250819_202357_e6c57f.md)
-- [Chrome Enterprise Report - August 19, 2025 23:17](./chrome_enterprise_report_20250819_231705_70cecb.md)
+- [Chrome Enterprise Report - August 21, 2025 14:05](./chrome_enterprise_report_20250821_140513_e0953f.md) - **Latest Production Report** ✨
 
 ## About
 

@@ -8,17 +8,14 @@ markdown: kramdown
 highlighter: rouge
 theme: minima
 
-# Collections
-collections:
-  reports:
-    output: true
-    permalink: /:collection/:name/
+# Process all markdown files as pages
+plugins:
+  - jekyll-optional-front-matter
 
-# Defaults
+# Defaults  
 defaults:
   - scope:
       path: ""
-      type: "reports"
     values:
       layout: "default"
 
@@ -32,7 +29,3 @@ exclude:
 include:
   - "*.md"
 
-# Plugins
-plugins:
-  - jekyll-feed
-  - jekyll-sitemap
