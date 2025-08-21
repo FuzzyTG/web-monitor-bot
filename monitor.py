@@ -1339,14 +1339,52 @@ def create_enhanced_competitive_markdown(parsed_data, processed_posts, report_id
             if features:
                 markdown_content += f"### {platform.capitalize()}\n\n"
                 if isinstance(features, list) and features:
-                    # Create table from first feature to get headers
-                    headers = list(features[0].keys())
-                    markdown_content += "| " + " | ".join(headers) + " |\n"
-                    markdown_content += "|" + "---|" * len(headers) + "\n"
-                    for feature in features:
-                        row_values = [str(feature.get(header, '')) for header in headers]
-                        markdown_content += "| " + " | ".join(row_values) + " |\n"
-                    markdown_content += "\n"
+                    try:
+                        # Create table from first feature to get headers with robust error handling
+                        raw_headers = list(features[0].keys()) if features[0] else []
+                        
+                        # Ensure headers are strings and handle None values
+                        safe_headers = [str(h).strip() if h is not None else "Unknown" for h in raw_headers]
+                        # Remove empty headers
+                        safe_headers = [h for h in safe_headers if h and h != "Unknown"]
+                        
+                        if not safe_headers:
+                            safe_headers = ["Feature", "Details"]  # Ultimate fallback
+                            print(f"Warning: No valid headers found for {platform}, using defaults")
+                        
+                        # Create table header
+                        markdown_content += "| " + " | ".join(safe_headers) + " |\n"
+                        markdown_content += "|" + "---|" * len(safe_headers) + "\n"
+                        
+                        # Process each feature with error handling
+                        for feature in features:
+                            try:
+                                if isinstance(feature, dict):
+                                    row_values = [str(feature.get(header, '')).strip() if feature.get(header) is not None else '' for header in raw_headers if str(header).strip() in safe_headers]
+                                    # Ensure we have the right number of values
+                                    while len(row_values) < len(safe_headers):
+                                        row_values.append('')
+                                    row_values = row_values[:len(safe_headers)]  # Trim if too many
+                                    markdown_content += "| " + " | ".join(row_values) + " |\n"
+                                else:
+                                    # Handle non-dict features
+                                    fallback_values = [str(feature)] + [''] * (len(safe_headers) - 1)
+                                    markdown_content += "| " + " | ".join(fallback_values) + " |\n"
+                            except Exception as row_error:
+                                print(f"Error processing feature row for {platform}: {row_error}")
+                                # Add empty row to maintain table structure
+                                empty_row = ['Error processing data'] + [''] * (len(safe_headers) - 1)
+                                markdown_content += "| " + " | ".join(empty_row) + " |\n"
+                        
+                        markdown_content += "\n"
+                        
+                    except Exception as table_error:
+                        print(f"Error creating table for {platform}: {table_error}")
+                        # Fallback to simple list format
+                        markdown_content += "**Features:**\n"
+                        for i, feature in enumerate(features[:5]):  # Limit to 5 items for safety
+                            markdown_content += f"- {str(feature)}\n"
+                        markdown_content += "\n"
     else:
         markdown_content += "No feature parity analysis available.\n"
     
@@ -1379,7 +1417,15 @@ def create_enhanced_competitive_markdown(parsed_data, processed_posts, report_id
                     markdown_content += f"### {evidence_id}\n\n"
                     markdown_content += f"**{product}** • **{feature}**"
                     if platforms:
-                        markdown_content += f" • `{', '.join(platforms)}`"
+                        try:
+                            # Ensure platforms are strings
+                            safe_platforms = [str(p) if p is not None else "Unknown" for p in platforms]
+                            safe_platforms = [p for p in safe_platforms if p and p != "Unknown"]
+                            if safe_platforms:
+                                markdown_content += f" • `{', '.join(safe_platforms)}`"
+                        except Exception as platform_error:
+                            print(f"Error processing platforms: {platform_error}")
+                            markdown_content += " • `Multiple Platforms`"
                     markdown_content += f"\n\n"
                     
                     if quote:
