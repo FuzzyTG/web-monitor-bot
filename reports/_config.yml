@@ -10,7 +10,5 @@ highlighter: rouge
 include:
   - "*.md"
 
-# Use remote theme instead of local theme for better compatibility
-remote_theme: pages-themes/cayman
-plugins:
-  - jekyll-remote-theme
+# Use minima theme for clean, professional look
+theme: minima
