@@ -1,1 +1,15 @@
-[]
+[
+  {
+    "id": "20250821_140513_e0953f",
+    "created_at": "2025-08-21T14:05:17.478843",
+    "posts_count": 1,
+    "high_priority_count": 0,
+    "analysis_success_count": 1,
+    "file_size_bytes": 10933,
+    "urls": {
+      "web_url": "file:///Users/alexyuan/Downloads/Projects/FuzzyTG/web-monitor-bot/reports/chrome_enterprise_report_20250821_140513_e0953f.md"
+    },
+    "email_sent": true,
+    "email_sent_at": "2025-08-21T14:05:17.436483"
+  }
+]
