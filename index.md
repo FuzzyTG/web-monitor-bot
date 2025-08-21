@@ -9,7 +9,7 @@ Welcome to the automated competitive intelligence monitoring system.
 
 ## Latest Reports
 
-- [Chrome Enterprise Report - August 21, 2025](./reports/chrome_enterprise_report_20250821_140513_e0953f.html) - **Latest Production Report** ✨
+- [Chrome Enterprise Report - August 21, 2025](./reports/chrome_enterprise_report_20250821_140513_e0953f.md) - **Latest Production Report** ✨
 
 ## Navigation
 
