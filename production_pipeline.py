@@ -392,6 +392,9 @@ def main():
     parser.add_argument('--config-check', action='store_true', help='Check system configuration and exit')
     parser.add_argument('--cleanup', action='store_true', help='Run report cleanup and exit')
     parser.add_argument('--limit', type=int, help='Limit analysis to first N posts (useful for testing)')
+    parser.add_argument('--save-debug', action='store_true', help='Save debug files for comparison analysis')
+    parser.add_argument('--debug-compare', action='store_true', help='Run debug comparison analysis on existing files')
+    parser.add_argument('--compare-only', action='store_true', help='Only run comparison on existing debug files')
     
     args = parser.parse_args()
     
@@ -429,11 +432,29 @@ def main():
             print(f"❌ Cleanup error: {e}")
         return
     
+    if args.compare_only:
+        print("🔍 RUNNING DEBUG COMPARISON ANALYSIS ONLY")
+        print("=" * 50)
+        try:
+            from debug_compare_reports import main as compare_main
+            success = compare_main()
+            if success:
+                print("✅ Comparison analysis completed successfully!")
+            else:
+                print("❌ Comparison analysis failed")
+        except ImportError:
+            print("❌ Debug comparison module not available")
+        except Exception as e:
+            print(f"❌ Comparison analysis error: {e}")
+        return
+    
     # Set environment variables for GitHub Actions compatibility
     if args.force:
         os.environ['FORCE_ANALYSIS'] = 'true'
     if args.notification_type:
         os.environ['NOTIFICATION_TYPE'] = args.notification_type
+    if args.save_debug:
+        os.environ['SAVE_DEBUG'] = 'true'
     
     # Handle direct CLI commands
     if len(sys.argv) > 1:
@@ -455,6 +476,15 @@ def main():
                 if backup_file and os.path.exists(backup_file):
                     shutil.move(backup_file, 'previous_blog_posts.json')
                 
+                # Run debug comparison if requested
+                if args.debug_compare and success:
+                    print("\n🔍 Running debug comparison analysis...")
+                    try:
+                        from debug_compare_reports import main as compare_main
+                        compare_main()
+                    except Exception as e:
+                        print(f"⚠️ Debug comparison failed: {e}")
+                
                 return success
             except Exception as e:
                 # Restore backup on error
@@ -474,7 +504,18 @@ def main():
         else:
             # Default: run production monitoring
             print("🚀 Starting Production Monitoring...")
-            return production_monitoring_pipeline(limit=args.limit)
+            success = production_monitoring_pipeline(limit=args.limit)
+            
+            # Run debug comparison if requested
+            if args.debug_compare and success:
+                print("\n🔍 Running debug comparison analysis...")
+                try:
+                    from debug_compare_reports import main as compare_main
+                    compare_main()
+                except Exception as e:
+                    print(f"⚠️ Debug comparison failed: {e}")
+            
+            return success
     
     # Interactive mode (no CLI arguments)
     print("🎯 MICROSOFT EDGE COMPETITIVE INTELLIGENCE - PRODUCTION MONITORING V2")

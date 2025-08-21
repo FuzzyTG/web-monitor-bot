@@ -1,0 +1,28 @@
+/* Custom CSS Overrides for Reports
+ * Place any custom styling here to override default report styles
+ * This file is optional and will be included if present
+ */
+
+/* Example: Custom color scheme
+.report-header {
+    background: linear-gradient(135deg, #your-color, #your-color-2) !important;
+}
+
+.stat-card {
+    border-left-color: #your-accent-color !important;
+}
+*/
+
+/* Example: Custom fonts
+body {
+    /* font-family: 'Your Custom Font', sans-serif !important; */
+}
+*/
+
+/* Example: Custom layout adjustments
+.container {
+    /* max-width: 1400px !important; */
+}
+*/
+
+/* Add your custom styles below this line */

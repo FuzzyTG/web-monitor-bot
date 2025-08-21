@@ -161,21 +161,21 @@ class URLManager:
         """Generate URL for a specific report"""
         base_url = self.config.github_config.get('base_url')
         if not base_url:
-            return f"file://./reports/generated/chrome_enterprise_report_{report_id}.html"
+            return f"file://./reports/generated/chrome_enterprise_report_{report_id}.md"
         
-        return f"{base_url}/reports/chrome_enterprise_report_{report_id}.html"
+        return f"{base_url}/reports/chrome_enterprise_report_{report_id}.md"
     
     def generate_index_url(self) -> str:
         """Generate URL for the reports index page"""
         base_url = self.config.github_config.get('base_url')
         if not base_url:
-            return "file://./reports/index.html"
+            return "file://./reports/index.md"
         
         return base_url
     
     def get_local_report_path(self, report_id: str) -> str:
         """Get local file path for a report"""
-        return f"reports/generated/chrome_enterprise_report_{report_id}.html"
+        return f"reports/generated/chrome_enterprise_report_{report_id}.md"
     
     def get_shareable_urls(self, report_id: str) -> Dict[str, str]:
         """Get all shareable URLs for a report"""
@@ -192,7 +192,7 @@ class URLManager:
             return None
         
         repo = self.config.github_config['repo']
-        return f"https://raw.githubusercontent.com/{repo}/gh-pages/reports/chrome_enterprise_report_{report_id}.html"
+        return f"https://raw.githubusercontent.com/{repo}/gh-pages/reports/chrome_enterprise_report_{report_id}.md"
     
     def validate_url_accessibility(self, url: str) -> bool:
         """Validate if a URL is accessible (basic check)"""
