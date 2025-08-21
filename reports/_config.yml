@@ -11,4 +11,4 @@ include:
   - "*.md"
 
 # Theme (optional)
-theme: minima
+theme: cayman
