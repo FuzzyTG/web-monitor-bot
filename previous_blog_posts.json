@@ -1,6 +1,15 @@
 {
   "posts": [
     {
+      "title": "Chrome brings seamless work and personal switching to iOS and enhanced enterprise protections to mobile",
+      "url": "https://cloud.google.com/blog/products/chrome-enterprise/chrome-brings-personal-and-work-separation-to-ios-users-and-more-enterprise-protections-to-mobile",
+      "author": "Martin Chown",
+      "read_time": "3 minute read",
+      "publish_date": "Unknown",
+      "id": "chrome-brings-personal-and-work-separation-to-ios-users-and-more-enterprise-protections-to-mobile",
+      "summary": "Chrome Enterprise blog post: Chrome brings seamless work and personal switching to iOS and enhanced enterprise protections to mob..."
+    },
+    {
       "title": "ChromeOS desk sync keeps your momentum going, across devices",
       "url": "https://cloud.google.com/blog/products/chrome-enterprise/chromeos-desk-sync-keeps-your-momentum-going-across-devices",
       "author": "Marcus Koehler",
@@ -83,16 +92,16 @@
     }
   ],
   "metadata": {
-    "last_checked": "2025-08-21T15:28:28.072342",
+    "last_checked": "2025-08-21T15:39:51.508968",
     "total_posts": 10,
     "monitoring_url": "unknown",
     "check_type": "production_monitoring_v2",
     "new_posts_found": 1,
     "new_posts_analyzed": 1,
-    "report_id": "20250821_152827_2bc8a8",
-    "report_url": "file:///home/runner/work/web-monitor-bot/web-monitor-bot/reports/chrome_enterprise_report_20250821_152827_2bc8a8.md",
+    "report_id": "20250821_153950_54bc66",
+    "report_url": "file:///home/runner/work/web-monitor-bot/web-monitor-bot/reports/chrome_enterprise_report_20250821_153950_54bc66.md",
     "email_sent": true,
-    "email_sent_at": "2025-08-21T15:28:28.072297",
+    "email_sent_at": "2025-08-21T15:39:51.508912",
     "notification_type": "new_posts"
   }
 }
