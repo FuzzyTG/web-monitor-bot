@@ -146,7 +146,7 @@ jobs:
           cd reports
           echo "source 'https://rubygems.org'" > Gemfile
           echo "gem 'jekyll', '~> 4.3'" >> Gemfile
-          echo "gem 'minima', '~> 2.5'" >> Gemfile
+          echo "gem 'jekyll-theme-cayman'" >> Gemfile
           echo "gem 'kramdown-parser-gfm'" >> Gemfile
           echo "gem 'jekyll-feed'" >> Gemfile
           echo "gem 'jekyll-sitemap'" >> Gemfile
