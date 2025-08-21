@@ -132,11 +132,35 @@ jobs:
         with:
           enablement: true
 
+      - name: Setup Ruby and Jekyll
+        if: always()
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.0'
+          bundler-cache: true
+          working-directory: './reports'
+
+      - name: Install Jekyll dependencies
+        if: always()
+        run: |
+          cd reports
+          echo "source 'https://rubygems.org'" > Gemfile
+          echo "gem 'jekyll', '~> 4.3'" >> Gemfile
+          echo "gem 'minima', '~> 2.5'" >> Gemfile
+          echo "gem 'kramdown-parser-gfm'" >> Gemfile
+          bundle install
+
+      - name: Build site with Jekyll
+        if: always()
+        run: |
+          cd reports
+          bundle exec jekyll build --destination _site
+
       - name: Upload Pages artifact
         if: always()
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './reports'
+          path: './reports/_site'
 
       - name: Deploy to GitHub Pages
         if: always()
