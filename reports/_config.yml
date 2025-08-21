@@ -12,8 +12,3 @@ include:
 
 # Theme (optional)
 theme: minima
-
-# Plugins
-plugins:
-  - jekyll-feed
-  - jekyll-sitemap
