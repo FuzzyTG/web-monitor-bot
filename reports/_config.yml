@@ -10,5 +10,7 @@ highlighter: rouge
 include:
   - "*.md"
 
-# Theme (optional)
-theme: cayman
+# Use remote theme instead of local theme for better compatibility
+remote_theme: pages-themes/cayman
+plugins:
+  - jekyll-remote-theme
