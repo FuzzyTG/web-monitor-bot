@@ -159,7 +159,13 @@ def create_competitive_intelligence_markdown(parsed_data):
     
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
     
-    markdown_content = f"""# Chrome vs Edge — Competitive Intelligence Brief
+    markdown_content = f"""---
+title: "Chrome vs Edge — Competitive Intelligence Brief"
+date: {datetime.now().strftime('%Y-%m-%d')}
+layout: default
+---
+
+# Chrome vs Edge — Competitive Intelligence Brief
 
 **Generated:** {timestamp} • **Audience:** PM/Engineering • **Status:** Draft
 

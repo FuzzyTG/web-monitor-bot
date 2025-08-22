@@ -1292,7 +1292,13 @@ def create_enhanced_competitive_markdown(parsed_data, processed_posts, report_id
     Returns:
         str: Enhanced competitive intelligence markdown content
     """
-    markdown_content = f"""# Chrome vs Edge — Competitive Intelligence Brief
+    markdown_content = f"""---
+title: "Chrome vs Edge — Competitive Intelligence Brief"
+date: {datetime.now().strftime('%Y-%m-%d')}
+layout: default
+---
+
+# Chrome vs Edge — Competitive Intelligence Brief
 
 **Generated:** {timestamp} • **Audience:** PM/Engineering • **Status:** Draft
 
@@ -1558,7 +1564,13 @@ def generate_markdown_report(analyzed_posts, report_id):
             
         except ImportError:
             # Fallback to simple markdown generation
-            markdown_content = f"""# Chrome vs Edge — Competitive Intelligence Brief
+            markdown_content = f"""---
+title: "Chrome vs Edge — Competitive Intelligence Brief"
+date: {datetime.now().strftime('%Y-%m-%d')}
+layout: default
+---
+
+# Chrome vs Edge — Competitive Intelligence Brief
 
 **Generated:** {timestamp} • **Audience:** PM/Engineering • **Status:** Draft
 

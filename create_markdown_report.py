@@ -35,7 +35,13 @@ def create_competitive_intelligence_markdown(processed_posts, aggregated_data, r
     problem_solution = aggregated_data.get('problem_solution_map', [])
     
     # Generate header
-    markdown_content = f"""# Chrome vs Edge — Competitive Intelligence Brief
+    markdown_content = f"""---
+title: "Chrome vs Edge — Competitive Intelligence Brief"
+date: {datetime.now().strftime('%Y-%m-%d')}
+layout: default
+---
+
+# Chrome vs Edge — Competitive Intelligence Brief
 
 **Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M')} • **Audience:** PM/Engineering • **Status:** Draft
 
