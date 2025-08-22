@@ -1825,7 +1825,7 @@ Generated: {timestamp}
             .cta-button {{ 
                 display: inline-block; 
                 background: #0078d4; 
-                color: white; 
+                color: #ffffff; 
                 padding: 15px 30px; 
                 text-decoration: none; 
                 border-radius: 5px; 
