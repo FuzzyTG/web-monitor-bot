@@ -163,7 +163,7 @@ class URLManager:
         if not base_url:
             return f"file://./reports/generated/chrome_enterprise_report_{report_id}.md"
         
-        return f"{base_url}/chrome_enterprise_report_{report_id}.md"
+        return f"{base_url}/chrome_enterprise_report_{report_id}.html"
     
     def generate_index_url(self) -> str:
         """Generate URL for the reports index page"""

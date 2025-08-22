@@ -97,33 +97,39 @@ jobs:
         run: |
           echo "💾 Checking for state changes to commit"
           
-          # Check if previous_blog_posts.json has changes
-          if git diff --quiet previous_blog_posts.json 2>/dev/null; then
-            echo "✅ No state changes to commit"
+          # Check if there are any changes to commit
+          if git diff --quiet && git diff --cached --quiet && git ls-files --others --exclude-standard | grep -q .; then
+            echo "✅ No changes to commit"
           else
-            echo "📝 State changes detected, committing to preserve monitoring state"
+            echo "📝 Changes detected, committing to preserve monitoring state and reports"
             
-            # Add the state file
+            # Add state file and any new reports
             git add previous_blog_posts.json
+            git add reports/chrome_enterprise_report_*.md 2>/dev/null || true
             
-            # Create commit message with metadata
-            COMMIT_MSG="Update monitoring state - $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+            # Check if we actually have changes staged
+            if git diff --cached --quiet; then
+              echo "✅ No changes staged after adding files"
+            else
+              # Create commit message with metadata
+              COMMIT_MSG="Update monitoring state and reports - $(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
-            - Trigger: ${{ github.event_name }}
-            - Force Analysis: ${{ github.event.inputs.force_analysis || 'false' }}
-            - Notification Type: ${{ github.event.inputs.notification_type || 'new_posts' }}
-            
-            🤖 Generated with Claude Code
-            
-            Co-Authored-By: Claude <noreply@anthropic.com>"
-            
-            # Commit changes
-            git commit -m "$COMMIT_MSG"
-            
-            # Push to main branch
-            git push origin main
-            
-            echo "✅ State changes committed and pushed successfully"
+              - Trigger: ${{ github.event_name }}
+              - Force Analysis: ${{ github.event.inputs.force_analysis || 'false' }}
+              - Notification Type: ${{ github.event.inputs.notification_type || 'new_posts' }}
+              
+              🤖 Generated with Claude Code
+              
+              Co-Authored-By: Claude <noreply@anthropic.com>"
+              
+              # Commit changes
+              git commit -m "$COMMIT_MSG"
+              
+              # Push to main branch
+              git push origin main
+              
+              echo "✅ Changes committed and pushed successfully"
+            fi
           fi
 
       - name: Setup Pages

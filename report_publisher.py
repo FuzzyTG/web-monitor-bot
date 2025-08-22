@@ -493,7 +493,7 @@ def generate_report_url(report_id, github_config=None):
         if not github_config:
             return None
     
-    return f"{github_config['base_url']}/chrome_enterprise_report_{report_id}.md"
+    return f"{github_config['base_url']}/chrome_enterprise_report_{report_id}.html"
 
 def cleanup_old_reports(max_age_days=30):
     """
