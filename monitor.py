@@ -2133,8 +2133,6 @@ def publish_report_and_get_url(markdown_file_path, report_id):
         # Try to import and use GitHub Pages publisher
         from report_publisher import (
             get_github_config,
-            setup_github_pages_repo,
-            publish_report_to_github_pages,
             generate_report_url
         )
         
@@ -2146,25 +2144,18 @@ def publish_report_and_get_url(markdown_file_path, report_id):
             print(f"⚠️ GitHub Pages not configured, using local URL: {local_url}")
             return True, local_url, "GitHub Pages not configured - using local file"
         
-        # Set up GitHub Pages repository
-        setup_success = setup_github_pages_repo(github_config)
-        if not setup_success:
-            local_url = f"file://{os.path.abspath(markdown_file_path)}"
-            return False, local_url, "Failed to set up GitHub Pages repository"
+        # With GitHub Actions deployment, files are already in place
+        # Just generate the URL for the report that will be accessible via GitHub Pages
+        report_url = generate_report_url(report_id, github_config)
         
-        # Publish report
-        success, report_url, error = publish_report_to_github_pages(
-            markdown_file_path, report_id, github_config
-        )
-        
-        if success:
-            print(f"✅ Report published to GitHub Pages: {report_url}")
+        if report_url:
+            print(f"✅ Report will be available at GitHub Pages: {report_url}")
             return True, report_url, None
         else:
             # Fallback to local URL
             local_url = f"file://{os.path.abspath(markdown_file_path)}"
-            print(f"⚠️ GitHub Pages publishing failed, using local URL: {local_url}")
-            return False, local_url, error
+            print(f"⚠️ Could not generate GitHub Pages URL, using local URL: {local_url}")
+            return False, local_url, "Failed to generate GitHub Pages URL"
         
     except ImportError:
         # report_publisher.py not available

@@ -34,7 +34,7 @@ def get_github_config():
     # Generate base URL if not provided
     if not reports_base_url:
         username, repo_name = github_repo.split('/')
-        reports_base_url = f"https://{username}.github.io/{repo_name}"
+        reports_base_url = f"https://{username.lower()}.github.io/{repo_name}"
     
     return {
         'token': github_token,
@@ -493,7 +493,7 @@ def generate_report_url(report_id, github_config=None):
         if not github_config:
             return None
     
-    return f"{github_config['base_url']}/reports/chrome_enterprise_report_{report_id}.md"
+    return f"{github_config['base_url']}/chrome_enterprise_report_{report_id}.md"
 
 def cleanup_old_reports(max_age_days=30):
     """

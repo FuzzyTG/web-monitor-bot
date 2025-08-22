@@ -41,7 +41,7 @@ class ReportConfig:
         # Auto-generate GitHub Pages URL if not provided
         if self.github_config['repo'] and not self.github_config['base_url']:
             username, repo_name = self.github_config['repo'].split('/')
-            self.github_config['base_url'] = f"https://{username}.github.io/{repo_name}"
+            self.github_config['base_url'] = f"https://{username.lower()}.github.io/{repo_name}"
         
         # AI configuration
         self.ai_config = {
@@ -163,7 +163,7 @@ class URLManager:
         if not base_url:
             return f"file://./reports/generated/chrome_enterprise_report_{report_id}.md"
         
-        return f"{base_url}/reports/chrome_enterprise_report_{report_id}.md"
+        return f"{base_url}/chrome_enterprise_report_{report_id}.md"
     
     def generate_index_url(self) -> str:
         """Generate URL for the reports index page"""
