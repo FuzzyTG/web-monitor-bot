@@ -92,16 +92,11 @@
     }
   ],
   "metadata": {
-    "last_checked": "2025-08-29T09:13:27.115430",
+    "last_checked": "2025-08-30T09:10:02.850476",
     "total_posts": 10,
     "monitoring_url": "unknown",
-    "check_type": "production_monitoring_v2",
-    "new_posts_found": 1,
-    "new_posts_analyzed": 1,
-    "report_id": "20250829_091325_c5ee06",
-    "report_url": "https://FuzzyTG.github.io/web-monitor-bot/chrome_enterprise_report_20250829_091325_c5ee06.html",
-    "email_sent": true,
-    "email_sent_at": "2025-08-29T09:13:27.115381",
-    "notification_type": "new_posts"
+    "check_type": "production_monitoring",
+    "new_posts_found": 0,
+    "total_posts_checked": 10
   }
 }
