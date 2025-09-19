@@ -1,13 +1,13 @@
 {
   "posts": [
     {
-      "title": "Chrome brings seamless work and personal switching to iOS and enhanced enterprise protections to mobile",
-      "url": "https://cloud.google.com/blog/products/chrome-enterprise/chrome-brings-personal-and-work-separation-to-ios-users-and-more-enterprise-protections-to-mobile",
-      "author": "Martin Chown",
-      "read_time": "3 minute read",
+      "title": "Supercharging Employee Productivity with AI, Securely, with Gemini in Chrome Enterprise",
+      "url": "https://cloud.google.com/blog/products/chrome-enterprise/supercharging-employee-productivity-with-ai-securely-with-gemini-in-chrome-enterprise",
+      "author": "Mark Berschadski",
+      "read_time": "4 minute read",
       "publish_date": "Unknown",
-      "id": "chrome-brings-personal-and-work-separation-to-ios-users-and-more-enterprise-protections-to-mobile",
-      "summary": "Chrome Enterprise blog post: Chrome brings seamless work and personal switching to iOS and enhanced enterprise protections to mob..."
+      "id": "supercharging-employee-productivity-with-ai-securely-with-gemini-in-chrome-enterprise",
+      "summary": "Chrome Enterprise blog post: Supercharging Employee Productivity with AI, Securely, with Gemini in Chrome Enterprise..."
     },
     {
       "title": "Unleash Your Business Potential: The Total Economic Impact of ChromeOS",
@@ -73,6 +73,15 @@
       "summary": "Chrome Enterprise blog post: How ChromeOS propelled Korean Air's digital transformation..."
     },
     {
+      "title": "Chrome brings seamless work and personal switching to iOS and enhanced enterprise protections to mobile",
+      "url": "https://cloud.google.com/blog/products/chrome-enterprise/chrome-brings-personal-and-work-separation-to-ios-users-and-more-enterprise-protections-to-mobile",
+      "author": "Martin Chown",
+      "read_time": "3 minute read",
+      "publish_date": "Unknown",
+      "id": "chrome-brings-personal-and-work-separation-to-ios-users-and-more-enterprise-protections-to-mobile",
+      "summary": "Chrome Enterprise blog post: Chrome brings seamless work and personal switching to iOS and enhanced enterprise protections to mob..."
+    },
+    {
       "title": "The Future is Collaborative: ChromeOS Customer Community",
       "url": "https://cloud.google.com/blog/products/chrome-enterprise/the-future-is-collaborative-chromeos-customer-community",
       "author": "Lawrence Lui",
@@ -80,23 +89,19 @@
       "publish_date": "Unknown",
       "id": "the-future-is-collaborative-chromeos-customer-community",
       "summary": "Chrome Enterprise blog post: The Future is Collaborative: ChromeOS Customer Community..."
-    },
-    {
-      "title": "Securely deploy ChromeOS Flex \u2013 from anywhere",
-      "url": "https://cloud.google.com/blog/products/chrome-enterprise/securely-deploy-chromeos-flex-from-anywhere",
-      "author": "Will Smith",
-      "read_time": "3 minute read",
-      "publish_date": "Unknown",
-      "id": "securely-deploy-chromeos-flex-from-anywhere",
-      "summary": "Chrome Enterprise blog post: Securely deploy ChromeOS Flex \u2013 from anywhere..."
     }
   ],
   "metadata": {
-    "last_checked": "2025-09-18T09:11:57.206701",
+    "last_checked": "2025-09-19T09:14:05.250155",
     "total_posts": 10,
     "monitoring_url": "unknown",
-    "check_type": "production_monitoring",
-    "new_posts_found": 0,
-    "total_posts_checked": 10
+    "check_type": "production_monitoring_v2",
+    "new_posts_found": 1,
+    "new_posts_analyzed": 1,
+    "report_id": "20250919_091404_0d15ff",
+    "report_url": "https://FuzzyTG.github.io/web-monitor-bot/chrome_enterprise_report_20250919_091404_0d15ff.html",
+    "email_sent": true,
+    "email_sent_at": "2025-09-19T09:14:05.250111",
+    "notification_type": "new_posts"
   }
 }
